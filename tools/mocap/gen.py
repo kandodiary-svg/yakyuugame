@@ -68,6 +68,13 @@ def pitch_track(name,rel,pre=1.5,post=0.9,fps=60):
     # pivot foot (right) at rubber at start
     off=np.array([0.14-res['fR'][0][0],0,0.0-res['fR'][0][2]])
     for k in ['pel','hL','hR','fL','fR','eL','eR']:res[k]=res[k]+off
+    # 足を上げている間は膝を曲げる（元データは脚がほぼ伸びたまま蹴り出す）：宙に浮いた足だけ、腰からの距離を柔らかく頭打ちにする
+    for fk_,sg in (('fL',-1),('fR',1)):
+        for i in range(len(res['pel'])):
+            hip=res['pel'][i]+np.array([0.095*sg,-0.04,0]);rel=res[fk_][i]-hip;dist=np.linalg.norm(rel)
+            y=res[fk_][i][1];w=np.clip((y-0.12)/0.2,0,1);w=w*w*(3-2*w)
+            if dist>0.64 and w>0:
+                d2=0.64+(dist-0.64)*0.2;nd=dist*(1-w)+d2*w;res[fk_][i]=hip+rel*(nd/dist);res[fk_][i][1]=max(0.1,res[fk_][i][1]-0.14*w)
     return dict(t0=round(t0,3),fps=fps,rel=pre,d=pack(res,range(len(idx))))
 out['p0']=pitch_track('124_01',3.72)
 out['p1']=pitch_track('124_02',3.37)
