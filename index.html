@@ -361,6 +361,7 @@ table.ls td.r{color:var(--led)}
 .t-menu button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;border-radius:var(--pw-r);padding:14px 18px}
 .t-menu span{font-family:"Dela Gothic One",sans-serif;font-size:20px;line-height:1.2}
 .t-menu small{font-size:12px;font-weight:500;opacity:.8;margin-top:2px}
+.t-menu .t-wide{grid-column:1/-1}
 .t-play{background:var(--led);color:#1c1300;padding:18px 20px!important;box-shadow:0 6px 0 #b77900,0 12px 24px rgba(0,0,0,.4)}
 .t-play span{font-size:26px}
 .t-play:active{transform:translateY(3px);box-shadow:0 3px 0 #b77900}
@@ -1380,6 +1381,9 @@ table td,.yt td,.pn-d,.tr-p em{font-variant-numeric:tabular-nums}
         <button class="t-sub" id="goPen"><span>ペナント</span><small>シーズンを戦う</small></button>
         <button class="t-sub" id="goArr"><span>アレンジ</span><small>オリジナル球団を作る</small></button>
       </div>
+      <div class="t-row t-wide">
+        <button class="t-sub" id="goOnline"><span>オンライン対戦</span><small>合言葉で友だちと1試合</small></button>
+      </div>
       <div class="t-row">
         <button class="t-sub" id="goEdit"><span>オーダー</span><small>打順・守備・先発</small></button>
         <button class="t-sub" id="goHow"><span>遊び方</span><small>操作の説明</small></button>
@@ -1431,6 +1435,11 @@ table td,.yt td,.pn-d,.tr-p em{font-variant-numeric:tabular-nums}
     <div class="topbar"><button class="back" id="editBack" aria-label="戻る"></button><h2 class="head" id="editTitle">チームを選ぶ</h2></div>
     <div class="tabs" id="editTabs"><button class="tab on" data-org="NPB">NPB</button><button class="tab" data-org="MLB">MLB</button></div>
     <div class="scroll" id="editBody"></div>
+  </section>
+
+  <section id="scr-online" class="scr">
+    <div class="topbar"><button class="back" data-back="title" aria-label="戻る"></button><h2 class="head">オンライン対戦</h2></div>
+    <div class="scroll" id="olBody"></div>
   </section>
 
   <section id="scr-how" class="scr">
@@ -2833,10 +2842,10 @@ let G=null;
 const HOOK={msg(){},sfx(){},board(){}};
 function newGameState(my,op,userHome,inn,diff){
   const away=userHome?op:my,home=userHome?my:op;
-  G={t:[away,home],r:[getRoster(away),getRoster(home)],line:[[0],[]],runs:[0,0],hits:[0,0],errs:[0,0],hadDeficit:[false,false],
+  G={t:[away,home],r:(NET.ro?NET.ro:[getRoster(away),getRoster(home)]),line:[[0],[]],runs:[0,0],hits:[0,0],errs:[0,0],hadDeficit:[false,false],
     inn:1,half:0,outs:0,b:0,s:0,bases:[null,null,null],ord:[0,0],pit:[0,0],used:null,
     userSide:userHome?1:0,maxInn:inn,diff,auto:false,over:false,shift:['normal','normal'],held:null,walkoff:false,changed:false,stat:new Map(),pitchApps:[[],[]],winCand:null,loseCand:null};
-  G.used=[G.r[0].p.map(()=>0),G.r[1].p.map(()=>0)];
+  NET.ro=null;G.used=[G.r[0].p.map(()=>0),G.r[1].p.map(()=>0)];
   startPitchAppearance(0,0);startPitchAppearance(1,0);
   return G;
 }
@@ -2883,7 +2892,7 @@ function cpuChoose(){
 }
 function throwPitch(type,tgt,final){const f=fieldIdx();const p=makePitch(type,tgt,curPitcher(),fatigue(),final);G.used[f][G.pit[f]]++;return p}
 function cpuRelief(){
-  const f=fieldIdx();if(f===G.userSide&&!G.auto)return null;
+  const f=fieldIdx();if(f===G.userSide&&!G.auto&&!NET.on)return null;
   const lead=G.runs[f]-G.runs[1-f],last=G.r[f].p.length-1,fresh=G.outs===0&&G.b===0&&G.s===0;
   const fat=fatigue(),close=Math.abs(lead)<=2;
   const teamId=G.t[f]&&G.t[f].id;
@@ -5197,7 +5206,8 @@ function orderBack(){
 function telopMini(t){const el=document.createElement('div');el.className='toast';el.textContent=t;document.body.appendChild(el);setTimeout(()=>el.remove(),1400)}
 function gchip(v){const g=grade(v);return `<span class="g" style="background:${GCOL[g]}">${g}</span>`}
 
-function show(id){document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('active',s.id==='scr-'+id));
+const NET={on:false,role:null,tr:null,code:'',ro:null,pn:0,pitchQ:[],snapQ:[],waitPitch:false,waitSnap:false,timers:[],myTeam:null,desync:0,log:[]};
+function show(id){if(NET.on&&id!=='game')netClose();document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('active',s.id==='scr-'+id));
   const bgIds={title:1};
   if(bgIds[id]){const tb=$('#titleBg');if(cv.parentNode!==tb)tb.appendChild(cv)}else if(cv.parentNode!==stage)stage.insertBefore(cv,stage.firstChild);
   resize()}
@@ -6062,6 +6072,136 @@ const U={phase:'idle',paused:false,mode:'meet',sel:'st',cursor:{x:0,y:ZN.cy},aim
 const userBat=()=>G&&userBatting()&&!G.auto;
 const userPitch=()=>G&&!userBatting()&&!G.auto;
 
+/* ================= オンライン対戦（合言葉マッチング） =================
+   方式：同じプログラムを両方の端末で動かし、ランダムが絡む判定（投球のばらつき・打球結果）は「ホスト」が決めて送る。
+   ・投手側の端末が球（p）を決めて送る　・打者側が振った時刻を送る　・ホストが当たり判定→結果(o)と乱数の種(seed)を送る
+   ・両端末は同じ種でプレー結果を計算するので、守備・走者・得点が一致する。投球ごとにホストが状態（np）を送って食い違いを直す */
+function netLog(s){const e=document.getElementById('olStat');if(e)e.textContent=s}
+function netSend(o){try{if(NET.tr&&NET.on||NET.tr&&NET.hello)NET.tr.send(JSON.stringify(o))}catch(e){console.warn('netSend',e)}}
+function withSeed(seed,fn){const old=Math.random;Math.random=mulberry(seed|0);try{return fn()}finally{Math.random=old}}
+function netSnap(){return{inn:G.inn,half:G.half,outs:G.outs,b:G.b,s:G.s,runs:G.runs.slice(),ord:G.ord.slice(),pit:G.pit.slice(),over:G.over,
+  bases:G.bases.map(x=>x?G.r[G.half].b.indexOf(x):-1)}}
+function netApplySnap(sn){if(!sn||!G)return;const bad=[];
+  for(const k of ['inn','half','outs','b','s'])if(G[k]!==sn[k]){bad.push(k+':'+G[k]+'→'+sn[k]);G[k]=sn[k]}
+  for(const k of ['runs','ord'])if(G[k].join()!==sn[k].join()){bad.push(k+':'+G[k].join()+'→'+sn[k].join());G[k]=sn[k].slice()}
+  const bs=G.bases.map(x=>x?G.r[G.half].b.indexOf(x):-1);if(bs.join()!==sn.bases.join()){bad.push('bases:'+bs.join()+'→'+sn.bases.join());G.bases=sn.bases.map(i=>i>=0?G.r[G.half].b[i]:null)}
+  for(let side=0;side<2;side++)if(G.pit[side]!==sn.pit[side]){switchPitcher(side,sn.pit[side]);if(side===fieldIdx()){const np=curPitcher();telop(`ピッチャー交代　${np.name}`,'#5fd0ff');caster(`${G.t[side].short}、ピッチャーは${np.name}に交代`)}}
+  if(bad.length){NET.desync++;NET.log.push(bad.join(' '));console.warn('net desync',bad)}
+  onState()}
+/* 打者側の振りの結果を判定する（ホストだけが乱数を使い、結果を両端末へ） */
+function netResolve(t){
+  const p=U.pitch;
+  const fin=(o,seed)=>{U.netO=o;U.netSeed=seed;p.cpu=o;resolvePitch(t)};
+  const hostCalc=sw=>{const o=!sw||sw.dt==null?(p.inZone?{k:'strike'}:{k:'ball'}):userContact(p,sw.dt,sw.cur,sw.mode,curBatter());
+    const seed=(Math.random()*2147483647)|0;netSend({t:'res',n:NET.pn,o,seed});fin(o,seed)};
+  if(userBat()){
+    const sw={dt:U.swing==null?null:U.swing-U.arrive,cur:{x:U.cursor.x,y:U.cursor.y},mode:U.mode};
+    if(NET.role==='host'){hostCalc(sw);return}
+    if(!U.netSent){U.netSent=true;netSend({t:'sw',n:NET.pn,...sw})}
+  }else if(NET.role==='host'){
+    if(U.netSw){hostCalc(U.netSw);return}
+    if(t>U.arrive+3){hostCalc(null);return}
+  }
+  if(NET.role==='guest'){
+    if(U.netRes){const r=U.netRes;U.netRes=null;fin(r.o,r.seed)}
+    else if(t>U.arrive+15)netClose()}
+}
+function netOnData(s){let m;try{m=JSON.parse(s)}catch(e){return}
+  switch(m.t){
+    case'hello':if(NET.role==='host'&&!NET.on)netHostStart(m.team);break;
+    case'start':if(NET.role==='guest'&&!NET.on)netBegin(m.away,m.home,m.inn,m.ro,true);break;
+    case'np':NET.snapQ.push(m.snap);if(NET.waitSnap){NET.waitSnap=false;U.until=now()}break;
+    case'pitch':if(!G||!NET.on)break;if(NET.waitPitch){NET.waitPitch=false;launchPitch(m.p.type,null,now(),true,m.p)}else NET.pitchQ.push(m.p);break;
+    case'sws':if(m.n===NET.pn&&U.pitch&&!userBat()&&U.swingAnim==null&&(U.phase==='windup'||U.phase==='flight'))U.swingAnim=Math.max(U.arrive+m.dt-0.07,now()-0.15);break;
+    case'sw':if(m.n===NET.pn)U.netSw=m;break;
+    case'res':if(m.n===NET.pn)U.netRes=m;break;
+    case'bye':netClose();break}}
+function netHostStart(guestTeam){
+  if(!TEAM[guestTeam]||!TEAM[NET.myTeam]){netLog('チーム情報が一致しません');return}
+  const ro=JSON.parse(JSON.stringify([getRoster(TEAM[NET.myTeam]),getRoster(TEAM[guestTeam])])),inn=+(document.getElementById('olInn')||{value:9}).value||9;
+  netSend({t:'start',away:NET.myTeam,home:guestTeam,inn,ro});
+  netBegin(NET.myTeam,guestTeam,inn,ro,false)}
+function netBegin(away,home,inn,ro,iAmHome){
+  NET.on=true;NET.ro=ro;NET.pn=0;NET.pitchQ=[];NET.snapQ=[];NET.waitPitch=false;NET.waitSnap=false;NET.desync=0;NET.log=[];
+  Object.assign(S,{my:iAmHome?home:away,opp:iAmHome?away:home,home:iAmHome,inn,diff:'normal',pennant:null});
+  document.body.classList.add('net');startGame()}
+function netDown(msg){
+  let el=document.getElementById('netDown');if(!el){el=document.createElement('div');el.id='netDown';
+    el.style.cssText='position:fixed;inset:0;z-index:300;background:rgba(5,9,20,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#fff;font:700 18px/1.5 system-ui,sans-serif;text-align:center;padding:24px';document.body.appendChild(el)}
+  el.innerHTML=`<div>${msg||'通信が切れました。対戦を終了します。'}</div><button class="btn primary" style="padding:12px 28px;border-radius:14px;font-weight:900">タイトルへ戻る</button>`;
+  el.style.display='flex';el.querySelector('button').onclick=()=>{el.style.display='none';G=null;show('title')}}
+function netClose(silent){
+  const was=NET.on,tr=NET.tr;NET.timers.forEach(clearTimeout);NET.timers=[];
+  try{if(tr&&!silent)tr.send(JSON.stringify({t:'bye'}))}catch(e){}
+  try{tr&&tr.close()}catch(e){}
+  NET.tr=null;NET.on=false;NET.role=null;NET.hello=false;document.body.classList.remove('net');
+  if(was&&!silent&&G&&!G.over)netDown()}
+function netFail(msg){netLog(msg);const b=document.getElementById('olGo');if(b)b.disabled=false;try{NET.tr&&NET.tr.close()}catch(e){}NET.tr=null;NET.timers.forEach(clearTimeout);NET.timers=[]}
+function netOpened(role){
+  NET.role=role;NET.hello=true;netLog('接続しました。試合を準備しています…');
+  if(role==='guest')netSend({t:'hello',team:NET.myTeam})}
+/* 通信路①：PeerJS（インターネット越し）。合言葉から固定のIDを作り、先に取れた人がホスト */
+function loadPeerLib(ok,ng){if(window.Peer)return ok();const sc=document.createElement('script');sc.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';sc.onload=()=>window.Peer?ok():ng();sc.onerror=ng;document.head.appendChild(sc);NET.timers.push(setTimeout(()=>{if(!window.Peer)ng()},9000))}
+function peerConnect(code){
+  const tr={role:null,c:null,peer:null,send(s){if(tr.c&&tr.c.open)tr.c.send(s)},close(){try{tr.peer&&tr.peer.destroy()}catch(e){}}};
+  const id='bbh42-'+code;
+  const hook=c=>{tr.c=c;c.on('open',()=>netOpened(tr.role));c.on('data',d=>netOnData(typeof d==='string'?d:JSON.stringify(d)));c.on('close',()=>{if(NET.on)netClose();else netFail('接続が切れました')});c.on('error',()=>{if(NET.on)netClose()})};
+  loadPeerLib(()=>{
+    let p;try{p=new Peer(id,{debug:0})}catch(e){return netFail('接続サービスを開始できませんでした')}
+    tr.peer=p;
+    p.on('open',()=>{tr.role='host';netLog('相手を待っています…（合言葉 '+code+'）　相手にも同じ合言葉を入れてもらってください')});
+    p.on('connection',c=>{if(tr.c){try{c.close()}catch(e){}return}hook(c)});
+    p.on('error',e=>{
+      if(e.type==='unavailable-id'&&!tr.role){try{p.destroy()}catch(_){}
+        const g=new Peer(undefined,{debug:0});tr.peer=g;tr.role='guest';
+        g.on('open',()=>hook(g.connect(id,{reliable:true})));
+        g.on('error',e2=>netFail('接続できませんでした（'+e2.type+'）'));
+        NET.timers.push(setTimeout(()=>{if(!NET.hello)netFail('相手に接続できませんでした。合言葉を確認してください（回線によっては接続できないことがあります）')},12000))}
+      else if(!NET.hello)netFail('接続できませんでした（'+e.type+'）')})
+  },()=>netFail('接続サービス(PeerJS)を読み込めませんでした。この環境ではオンライン通信がブロックされている可能性があります。GitHub Pages版のURLで開いてください。'));
+  return tr}
+/* 通信路②：同じ端末・同じブラウザの別タブどうし（BroadcastChannel）。動作確認や、1台で2人分を試すとき用 */
+function bcConnect(code){
+  const ch=new BroadcastChannel('bbh42-'+code),me=Math.random().toString(36).slice(2),tr={role:null,peer:null};
+  tr.send=s=>ch.postMessage({to:tr.peer,from:me,d:s});
+  tr.close=()=>{try{ch.postMessage({to:tr.peer,from:me,bye:1})}catch(e){}try{ch.close()}catch(e){}};
+  const look=()=>{if(!tr.peer)ch.postMessage({k:'look',from:me})};
+  ch.onmessage=ev=>{const m=ev.data;if(!m||m.from===me)return;
+    if(m.k==='look'){if(tr.role==='host'&&!tr.peer)ch.postMessage({k:'here',from:me,to:m.from})}
+    else if(m.k==='here'&&m.to===me&&!tr.peer&&(!tr.role||(tr.role==='host'&&me>m.from))){tr.role='guest';tr.peer=m.from;ch.postMessage({k:'join',from:me,to:m.from});netOpened('guest')}
+    else if(m.k==='join'&&m.to===me&&tr.role==='host'&&!tr.peer){tr.peer=m.from;netOpened('host')}
+    else if(m.to===me&&m.from===tr.peer){if(m.bye){if(NET.on)netClose();else netFail('相手が退出しました')}else if(m.d!=null)netOnData(m.d)}};
+  look();
+  NET.timers.push(setTimeout(()=>{if(!tr.role){tr.role='host';netLog('相手を待っています…（合言葉 '+code+'）　同じブラウザの別タブで同じ合言葉を入れてください')}},700));
+  const iv=setInterval(look,1000);NET.timers.push(iv);
+  return tr}
+function netConnect(mode){
+  const code=(document.getElementById('olCode').value||'').trim().replace(/\s+/g,'');
+  if(!code){netLog('合言葉を入れてください（数字や文字で4〜12字くらい）');return}
+  NET.myTeam=document.getElementById('olTeam').value;NET.code=code;NET.role=null;NET.hello=false;
+  document.getElementById('olGo').disabled=true;netLog('接続しています…');
+  NET.tr=mode==='bc'?bcConnect(code):peerConnect(code)}
+function renderOnline(){
+  const opt=org=>TEAMS.filter(t=>t.org===org).map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  const keep=NET.myTeam||S.my&&TEAM[S.my]&&TEAM[S.my].org!=='ARR'&&S.my||(TEAMS[0]&&TEAMS[0].id);
+  document.getElementById('olBody').innerHTML=`
+    <p class="hint" style="margin:6px 0 14px">友だちと同じ「合言葉」を入れると、つながって1試合できます。先に入れた人がホスト（先攻）、あとから入れた人が後攻です。</p>
+    <div class="grp">自分のチーム</div>
+    <select id="olTeam" class="btn" style="width:100%;padding:12px;margin-bottom:10px"><optgroup label="NPB">${opt('NPB')}</optgroup><optgroup label="MLB">${opt('MLB')}</optgroup></select>
+    <div class="grp">イニング数（ホストの設定が使われます）</div>
+    <select id="olInn" class="btn" style="width:100%;padding:12px;margin-bottom:10px"><option value="3">3回</option><option value="5">5回</option><option value="9" selected>9回</option></select>
+    <div class="grp">合言葉</div>
+    <input id="olCode" class="btn" maxlength="12" placeholder="例：4812" style="width:100%;padding:12px;margin-bottom:12px;text-align:center;font-size:22px;letter-spacing:.2em" autocomplete="off">
+    <button class="btn primary big" id="olGo" style="width:100%;margin-bottom:8px">接続して対戦する</button>
+    <button class="btn" id="olBc" style="width:100%;margin-bottom:12px">同じ端末の別タブで対戦（お試し）</button>
+    <div id="olStat" class="hint" style="min-height:44px;white-space:pre-wrap"></div>
+    <p class="hint" style="margin-top:10px;font-size:11px">打撃は自分のタイミングで、投球は球種とコースを自分で決めます。通信は PeerJS（P2P）を使うため、回線やネットワーク設定によってはつながらないことがあります。選手交代・作戦・オートはオンライン中は使えません。</p>`;
+  const sel=document.getElementById('olTeam');if(keep&&[...sel.options].some(o=>o.value===keep))sel.value=keep;
+  document.getElementById('olGo').onclick=()=>netConnect('peer');
+  document.getElementById('olBc').onclick=()=>netConnect('bc')}
+document.getElementById('goOnline').onclick=()=>{netClose(true);renderOnline();show('online')};
+window.addEventListener('beforeunload',()=>{try{if(NET.on)netClose()}catch(e){}});
+
 function startGame(){
   initAudio();// どの入口から試合を始めても音声を使えるように（クリック操作の中で呼ばれる）
   newGameState(TEAM[S.my],TEAM[S.opp],S.home,S.inn,S.diff);
@@ -6083,7 +6223,10 @@ function swapBatter(){ // 打席が替わったら、次の打者をすぐ打席
   emitGameEvent({type:'BATTER',pl:b,today:s?s.h:0});return true}
 function nextPitch(t){
   G.changed=false;U.lastMark=null;U.play=null;
-  if(!userBat()){
+  if(NET.on&&NET.role==='guest'){ // ゲストはホストの状態通知（np）を受けてから次の投球へ
+    if(!NET.snapQ.length){U.phase='wait';U.until=1e9;NET.waitSnap=true;return}
+    netApplySnap(NET.snapQ.shift())}
+  if(!userBat()&&!NET.on){
     const sr=cpuTrySteal();
     try{AudioDirector.setCrowd(AudioDirector.baseCrowd());const d=Math.abs(G.runs[0]-G.runs[1]);const loaded=G.bases&&G.bases.every(Boolean),key=G.inn+'-'+G.half+'-'+G.bases.map(Boolean).join('');
       if(U.chanceKey!==key&&((G.inn>=G.maxInn-2&&d<=1&&G.bases&&(G.bases[1]||G.bases[2]))||loaded)){U.chanceKey=key;emitGameEvent({type:'CHANCE',loaded,tie:d===1&&!loaded})}
@@ -6091,30 +6234,35 @@ function nextPitch(t){
     if(sr){telop(sr.msg,sr.color);caster(sr.msg);emitGameEvent({type:'STEAL',ok:/成功/.test(sr.msg)});drawScoreboard();U.phase='wait';U.until=t+1.15;return}
   }
   swapBatter();
-  const np=cpuRelief();if(np){telop(`ピッチャー交代　${np.name}`,'#5fd0ff');caster(`${G.t[fieldIdx()].short}、ピッチャーは${np.name}に交代`);emitGameEvent({type:'PCHANGE',pl:np})}
+  const np=(NET.on&&NET.role==='guest')?null:cpuRelief();if(np){telop(`ピッチャー交代　${np.name}`,'#5fd0ff');caster(`${G.t[fieldIdx()].short}、ピッチャーは${np.name}に交代`);emitGameEvent({type:'PCHANGE',pl:np})}
   {const pf=FIG.field[fieldIdx()][0],o=pf.userData.numOpt,pn=curPitcher().num;if(pf.userData.numPlane&&o&&o.num!==pn){o.num=pn;pf.userData.numPlane.material.map=numTex(pn,o.numFg,o.numBg);pf.userData.numPlane.material.needsUpdate=true;if(pf.userData.namePlane){pf.userData.namePlane.material.map=nameTex(curPitcher().name,o.numFg,o.numBg);pf.userData.namePlane.material.needsUpdate=true}}
    FIG.field[fieldIdx()][0].userData.gloveR=curPitcher().throws==='L'}
   drawScoreboard();skCheck();
+  if(NET.on&&NET.role==='host')netSend({t:'np',snap:netSnap()});
   if(userPitch()){U.phase='aim';U.pitch=null;return}
+  if(NET.on){U.pitch=null;U.phase='wait';U.until=1e9;NET.waitPitch=true;const q=NET.pitchQ.shift();if(q){NET.waitPitch=false;launchPitch(q.type,null,t,true,q)}return}
   if(cpuTactics(t))return;
   const c=cpuChoose();U.poDone=false;launchPitch(c.type,{x:c.x,y:c.y},t,true);
 }
-function launchPitch(type,tgt,t,final){
-  const p=throwPitch(type,tgt,final);U.TS=userBat()?(DIFF[G.diff]||DIFF.normal).ts:1;
+function launchPitch(type,tgt,t,final,pre){
+  let p;if(pre){p=pre;const f=fieldIdx();G.used[f][G.pit[f]]++}else p=throwPitch(type,tgt,final);
+  if(NET.on){NET.pn++;U.netSw=null;U.netRes=null;U.netSent=false;U.netO=null}
+  U.TS=(userBat()&&!NET.on)?(DIFF[G.diff]||DIFF.normal).ts:1;
   U.pathUntil=0;U.swingMiss=false;U.pitch=p;U.wind=t;U.rel=t+1.0;if(userBat()&&G.diff==='easy')setTimeout(()=>{if(U.pitch===p)showPinfo(p)},1000);U.arrive=U.rel+p.T*U.TS;try{const kmh=p.kmh||p.speed||140;setTimeout(()=>{if(U.pitch===p)AudioDirector.playRelease(kmh)},1000)}catch(e){}U.swing=null;U.swingAnim=null;U.mittDone=false;
-  if(!userBat())p.cpu=cpuBat(p,curBatter());
+  if(!userBat()&&!NET.on)p.cpu=cpuBat(p,curBatter());
   paRecord(p);
   U.lastHand=null;U.phase='windup';
 }
 function resolvePitch(t){
   const p=U.pitch;let o;const _bNow=curBatter(),_pNow=curPitcher(),_bT=G.t[G.half].id,_pT=G.t[1-G.half].id;
-  if(userBat())o=U.swing==null?(p.inZone?{k:'strike'}:{k:'ball'}):userContact(p,U.swing-U.arrive,U.cursor,U.mode,curBatter());
+  if(NET.on)o=U.netO;
+  else if(userBat())o=U.swing==null?(p.inZone?{k:'strike'}:{k:'ball'}):userContact(p,U.swing-U.arrive,U.cursor,U.mode,curBatter());
   else o=p.cpu||cpuBat(p,curBatter());
   if(o.k==='contact'){U.impactTime=t;U.lastContact=o;U.lastBat={p:_bNow,team:_bT}}
   U.lastMark={x:p.tx,y:p.ty,until:t+1.6};U.pitchInfo=`${p.kmh}km/h　${PITCH[p.type].n}`;showPinfo(p);if(o.k!=='contact')showPath(p,t+1.8);
   if(userBat()&&U.swing!=null)swingFeedback(p,U.swing-U.arrive);
   const tac=userBat()?U.tac:null;U.tac=null;
-  if(o.k==='contact'){U.playTac=tac;let R;try{R=resolveContact(o)}finally{U.playTac=null}startPlay(R,t,o.q);return}
+  if(o.k==='contact'){U.playTac=tac;let R;try{R=NET.on?withSeed(U.netSeed,()=>resolveContact(o)):resolveContact(o)}finally{U.playTac=null}startPlay(R,t,o.q);return}
   // 盗塁・エンドラン・スクイズで走者が走る（ファウルなら戻る）
   let stF=-1,stRun=null;const sqRun=tac==='squeeze'&&o.k!=='foul'?G.bases[2]:null;
   if((tac==='steal'||tac==='hitrun')&&o.k!=='foul'){stF=G.bases[0]&&!G.bases[1]?0:G.bases[1]&&!G.bases[2]?1:-1;stRun=stF>=0?G.bases[stF]:null}
@@ -6191,7 +6339,7 @@ function buildMoves(R,F){
 function startPlay(R,t,q){
   const F=makeFielders(G.r[fieldIdx()],curPitcher());
   // 守備の送球先・走者への指示：選べる場面では、選択肢ごとの結果を同じ乱数で先に計算しておき、選ばれた結果に差し替える
-  let dec=null;try{if(OPT.manualPlay!==false&&!G.auto){dec=playDecision(R);if(dec){const V=playVariants(R,dec);R=V.auto;dec=playDecision(R);if(dec)dec.V=V}}}catch(e){console.warn('decision',e);dec=null}
+  let dec=null;try{if(OPT.manualPlay!==false&&!G.auto&&!NET.on){dec=playDecision(R);if(dec){const V=playVariants(R,dec);R=V.auto;dec=playDecision(R);if(dec)dec.V=V}}}catch(e){console.warn('decision',e);dec=null}
   const mv=buildMoves(R,F);
   try{if(ball.visible&&q>0.5)FX.hit(ball.position.x,ball.position.y,ball.position.z,q)}catch(e){}
   const _o=ball.visible&&U.phase==='flight'&&R.sim&&R.sim.pts[0]?{x:ball.position.x-R.sim.pts[0].x,y:ball.position.y-R.sim.pts[0].y,z:ball.position.z-R.sim.pts[0].z}:null;
@@ -6410,7 +6558,7 @@ function step(t,dt){
     case'flight':{const p=U.pitch;
       if(!userBat()&&p.cpu&&(p.cpu.k==='contact'||p.cpu.swing)&&U.swingAnim==null&&t>=U.arrive-0.09)U.swingAnim=t;
       if(!U.mittDone&&t>=U.arrive){U.mittDone=true;const c=userBat()?(U.swing!=null&&Math.abs(U.swing-U.arrive)<timingWin()*1.5):(p.cpu&&p.cpu.k!=='strike'&&p.cpu.k!=='ball');if(!c){try{AudioDirector.playMitt(p.kmh||140,p.type,p.ty!=null&&p.ty<0.1)}catch(e){}}}
-      {const hitNow=userBat()?(U.swing!=null&&t>=Math.max(U.arrive,U.swing)):(p.cpu&&p.cpu.k==='contact'&&t>=U.arrive);if(hitNow||t>=U.arrive+0.14)resolvePitch(t)}break}
+      {const hitNow=userBat()?(U.swing!=null&&t>=Math.max(U.arrive,U.swing)):(p.cpu&&p.cpu.k==='contact'&&t>=U.arrive);if(hitNow||t>=U.arrive+0.14){if(NET.on)netResolve(t);else resolvePitch(t)}}break}
     case'play':
       {const P=U.play,d=P.dec;if(d&&!d.chosen){const pt=t-P.t0;if(pt>=d.until){d.chosen='auto';ctrlKey=''}else if(pt>0.2)P.t0+=dt*0.18}}// 選べる間はわずかにスロー（打球の飛び出しは通常速度。以前は0.45倍速で全体が遅く見えた）
       if(U.replay){if(replayT(t)-U.play.t0>=U.replay.endPt||t-U.replay.r0>(U.replay.endPt+0.35)/U.replay.sp+1.5){endReplay();finishPlay(t)}break}
@@ -8829,12 +8977,12 @@ function tacRowPit(){const can=U.phase==='aim',pk=pickoffBase()>=0;
 (function(){try{const st=document.createElement('style');st.textContent=`#ctrl .tac{display:flex;align-items:center;gap:6px;margin:6px 0 2px;flex-wrap:wrap}#ctrl .tac span{font-size:12px;color:#6b7a8c;font-weight:700}
 #ctrl .tac button{flex:1;min-width:64px;padding:6px 8px;border-radius:8px;border:1px solid #c9d3df;background:#fff;color:#27364a;font-weight:800;font-size:13px}
 #ctrl .tac button.on{background:linear-gradient(180deg,#ffd24a,#f0a91c);border-color:#d99000;color:#3a2600}#ctrl .tac button:disabled{opacity:.45}@media (max-width:700px){#ctrl .tac{margin-right:46px}}`;document.head.appendChild(st)}catch(e){console.warn(e)}})();
-function doSwing(){if(!userBat()||U.paused)return;if((U.phase==='windup'||U.phase==='flight')&&U.swing==null){const t=now();U.swing=t;U.swingAnim=t-0.07}}
-function doThrow(){if(U.phase!=='aim')return;launchPitch(U.sel,{...U.aim},now())}
+function doSwing(){if(!userBat()||U.paused)return;if((U.phase==='windup'||U.phase==='flight')&&U.swing==null){const t=now();U.swing=t;U.swingAnim=t-0.07;if(NET.on)netSend({t:'sws',n:NET.pn,dt:t-U.arrive})}}
+function doThrow(){if(U.phase!=='aim')return;launchPitch(U.sel,{...U.aim},now());if(NET.on)netSend({t:'pitch',p:JSON.parse(JSON.stringify(U.pitch))})}
 /* ===== 作戦：牽制・敬遠・守備シフト ===== */
 function pickoffBase(){return G.bases[0]?0:G.bases[1]&&!G.bases[2]?1:-1}
 // 牽制：アウトはまれ（盗塁を狙っていると取りやすい）。牽制された走者はリードが小さくなり、その打席は走りにくい
-function doPickoff(byCpu,leaning){const b=pickoffBase();if(b<0)return false;const run=G.bases[b],t=now();
+function doPickoff(byCpu,leaning){if(NET.on)return false;const b=pickoffBase();if(b<0)return false;const run=G.bases[b],t=now();
   const p=clamp(0.015+Math.max(0,(run.speed||55)-60)*0.001+(leaning?0.22:0)-(G.held===run?0.01:0),0.005,0.35);
   try{AudioDirector.playGlove(false)}catch(e){}
   if(Math.random()<p){G.bases[b]=null;G.outs++;st(run).cs=(st(run).cs||0)+1;telop('牽制アウト！','#ff6a5e',true);caster(`牽制球！${run.name}、帰塁できずアウト`);
@@ -8912,7 +9060,7 @@ function renderControls(){
   $('#bAuto').classList.toggle('on',!!G.auto);
 }
 $('#bHelp').onclick=()=>{if(G&&!G.over&&!U.paused)showHelp(true)};
-$('#bAuto').onclick=()=>{if(!G)return;G.auto=!G.auto;if(G.auto&&U.phase==='aim'){U.phase='wait';U.until=now()+0.3}ctrlKey=''};
+$('#bAuto').onclick=()=>{if(!G||NET.on)return;G.auto=!G.auto;if(G.auto&&U.phase==='aim'){U.phase='wait';U.until=now()+0.3}ctrlKey=''};
 
 /* ================= メニュー・結果 ================= */
 function lineHTML(){
@@ -8950,11 +9098,12 @@ function showHelp(force){
    <button class="btn primary" id="hOk">OK</button></div>`;
   $('#hOk').onclick=()=>resumeGame();
 }
-function pauseGame(){U.paused=true;U.pauseAt=now()}
+function pauseGame(){if(NET.on)return;U.paused=true;U.pauseAt=now()}
 function resumeGame(){const d=now()-U.pauseAt;U.paused=false;
   for(const k of ['until','wind','rel','arrive','swing','swingAnim'])if(U[k]!=null)U[k]+=d;
   if(U.play)U.play.t0+=d;if(U.lastMark)U.lastMark.until+=d;$('#menu').classList.add('hidden')}
 $('#bMenu').onclick=()=>{if(!G||G.over)return;pauseGame();renderMenu()};
+const _renderMenu0=renderMenu;renderMenu=function(){_renderMenu0();if(NET.on)['mSub','mSkip','mResume'].forEach(i=>{const e=document.getElementById(i);if(e){if(i==='mResume'){e.onclick=()=>$('#menu').classList.add('hidden')}else e.remove()}})};
 function renderMenu(){
   const f=fieldIdx(),uf=f===G.userSide,can=uf&&G.pit[f]<G.r[f].p.length-1&&(U.phase==='aim'||U.phase==='wait');const m=$('#menu');m.classList.remove('hidden');
   m.innerHTML=`<div class="sheet"><h3 class="head">タイム</h3>${lineHTML()}
