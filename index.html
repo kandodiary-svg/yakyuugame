@@ -5855,6 +5855,8 @@ function poseBatterP(P,pre,sw,cy,t,opt){ // pre: 0..2 (構え→テイクバッ�
     const tm=Math.min(3.89,sw<=0.09?2.62+sw*2.0:2.80+(sw-0.09)*2.0);mcApply(P,mcTrack(MCD.swing,tm,_mcA));
     const w0=sw<=0.09?sw/0.09:Math.max(0,1-(sw-0.09)/0.22),w=_sm3(w0),dY=hy-1.32,dZ=0.48+dz-0.515;
     P.hL.y+=dY*w;P.hR.y+=dY*w;P.hL.z+=dZ*w;P.hR.z+=dZ*w;if(P.eL){P.eL.y+=dY*w;P.eL.z+=dZ*w}if(P.eR){P.eR.y+=dY*w;P.eR.z+=dZ*w}P.pel.y+=dY*0.35*w;
+    {_bm.copy(P.hR).sub(P.hL);const L=_bm.length(); // 振り終わりで元データは片手を離す → 両手をバットのグリップに留める
+      if(L>0.2){const w=_sm3((L-0.2)/0.1);_bm.multiplyScalar(0.2/L).add(P.hL);P.hR.lerp(_bm,w);if(P.eR){_bv.copy(P.hR);P.eR.lerp(_bv.sub(P.hL).multiplyScalar(0.5).add(P.hL).add(_bm.set(0.05,-0.15,-0.05)),w*0.5)}}}
     if(opt.tgt){ // バットの芯がボールを通るように、手の位置とバットの向きを解く（当たる瞬間だけ強く効かせる）
       const ws=sw<=0.03?0:sw<=0.09?_sm3((sw-0.03)/0.06):sw<0.17?_sm3(1-(sw-0.09)/0.08):0;
       if(ws>0){_bm.copy(P.hL).add(P.hR).multiplyScalar(0.5);_bv.copy(opt.tgt).sub(_bm);const dist=_bv.length();
@@ -6047,6 +6049,12 @@ function startGame(){
 function onState(){drawScoreboard();hudKey='';updateBoard()}
 const now=()=>performance.now()/1000;
 
+function swapBatter(){ // 打席が替わったら、次の打者をすぐ打席に立たせる（以前は次の投球の直前まで前の打者が残っていた）
+  if(FIG.batFor===curBatter()&&FIG.batSide===batsOf(curBatter()))return false;
+  refreshBatter();const b=curBatter();const s=G.stat.get(b);
+  caster(`${G.ord[G.half]+1}番 ${b.pos==='指'?'指名打者':FNAME[FPOS.find(f=>f.pos===b.pos)?.k]||''}、${b.name}${s&&s.ab?`。今日は${s.ab}打数${s.h}安打`:''}`);
+  try{telop(`${G.ord[G.half]+1}番　${b.name}`,'#ffd24a')}catch(e){}
+  emitGameEvent({type:'BATTER',pl:b,today:s?s.h:0});return true}
 function nextPitch(t){
   G.changed=false;U.lastMark=null;U.play=null;
   if(!userBat()){
@@ -6056,7 +6064,7 @@ function nextPitch(t){
       else if(!AudioDirector.speaking&&performance.now()-AudioDirector.lastEnd>20000&&Math.random()<0.15)emitGameEvent({type:'IDLE'})}catch(e){}
     if(sr){telop(sr.msg,sr.color);caster(sr.msg);emitGameEvent({type:'STEAL',ok:/成功/.test(sr.msg)});drawScoreboard();U.phase='wait';U.until=t+1.15;return}
   }
-  if(FIG.batFor!==curBatter()||FIG.batSide!==batsOf(curBatter())){refreshBatter();const b=curBatter();const s=G.stat.get(b);caster(`${G.ord[G.half]+1}番 ${b.pos==='指'?'指名打者':FNAME[FPOS.find(f=>f.pos===b.pos)?.k]||''}、${b.name}${s&&s.ab?`。今日は${s.ab}打数${s.h}安打`:''}`);emitGameEvent({type:'BATTER',pl:b,today:s?s.h:0})}
+  swapBatter();
   const np=cpuRelief();if(np){telop(`ピッチャー交代　${np.name}`,'#5fd0ff');caster(`${G.t[fieldIdx()].short}、ピッチャーは${np.name}に交代`);emitGameEvent({type:'PCHANGE',pl:np})}
   {const pf=FIG.field[fieldIdx()][0],o=pf.userData.numOpt,pn=curPitcher().num;if(pf.userData.numPlane&&o&&o.num!==pn){o.num=pn;pf.userData.numPlane.material.map=numTex(pn,o.numFg,o.numBg);pf.userData.numPlane.material.needsUpdate=true;if(pf.userData.namePlane){pf.userData.namePlane.material.map=nameTex(curPitcher().name,o.numFg,o.numBg);pf.userData.namePlane.material.needsUpdate=true}}
    FIG.field[fieldIdx()][0].userData.gloveR=curPitcher().throws==='L'}
@@ -6369,14 +6377,15 @@ function step(t,dt){
   else if(U.phase==='aim'){if(keys.ArrowLeft)U.aim.x-=sp*0.5;if(keys.ArrowRight)U.aim.x+=sp*0.5;if(keys.ArrowUp)U.aim.y+=sp*0.5;if(keys.ArrowDown)U.aim.y-=sp*0.5;clampAim()}
   switch(U.phase){
     case'intro':if(t>=U.until){U.phase='wait';U.until=t}break;
-    case'wait':if(t>=U.until){if(G.over){U.phase='over';showResult()}else nextPitch(t)}break;
+    case'wait':if(!G.over&&!U.paused&&t>=U.until-1.0&&!(U.play&&U.play.dec&&!U.play.dec.chosen))try{swapBatter()}catch(e){}
+      if(t>=U.until){if(G.over){U.phase='over';showResult()}else nextPitch(t)}break;
     case'windup':if(t>=U.rel){if(U.lastHand&&U.pitch&&!U.pitch.rebased){U.pitch.rebased=rebasePitch(U.pitch,U.lastHand)}U.phase='flight'}break;
     case'flight':{const p=U.pitch;
       if(!userBat()&&p.cpu&&(p.cpu.k==='contact'||p.cpu.swing)&&U.swingAnim==null&&t>=U.arrive-0.09)U.swingAnim=t;
       if(!U.mittDone&&t>=U.arrive){U.mittDone=true;const c=userBat()?(U.swing!=null&&Math.abs(U.swing-U.arrive)<timingWin()*1.5):(p.cpu&&p.cpu.k!=='strike'&&p.cpu.k!=='ball');if(!c){try{AudioDirector.playMitt(p.kmh||140,p.type,p.ty!=null&&p.ty<0.1)}catch(e){}}}
       {const hitNow=userBat()?(U.swing!=null&&t>=Math.max(U.arrive,U.swing)):(p.cpu&&p.cpu.k==='contact'&&t>=U.arrive);if(hitNow||t>=U.arrive+0.14)resolvePitch(t)}break}
     case'play':
-      {const P=U.play,d=P.dec;if(d&&!d.chosen){const pt=t-P.t0;if(pt>=d.until){d.chosen='auto';ctrlKey=''}else if(pt>-0.05)P.t0+=dt*0.55}}// 選べる間はスロー
+      {const P=U.play,d=P.dec;if(d&&!d.chosen){const pt=t-P.t0;if(pt>=d.until){d.chosen='auto';ctrlKey=''}else if(pt>0.2)P.t0+=dt*0.18}}// 選べる間はわずかにスロー（打球の飛び出しは通常速度。以前は0.45倍速で全体が遅く見えた）
       if(U.replay){if(replayT(t)-U.play.t0>=U.replay.endPt||t-U.replay.r0>(U.replay.endPt+0.35)/U.replay.sp+1.5){endReplay();finishPlay(t)}break}
       if(t-U.play.t0>=U.play.R.end){if(U.play.R.type==='HR'&&OPT.replay!==false&&!U.play.replayed&&!G.auto)startReplay(t);else finishPlay(t)}break;
   }
