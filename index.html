@@ -1357,6 +1357,9 @@ table td,.yt td,.pn-d,.tr-p em{font-variant-numeric:tabular-nums}
 #app #scr-pdata .pd-cols>*:not(.pd-abil) *{color:inherit}
 #app #scr-pdata .pd-cols .sp,#app #scr-pdata .pd-cols [class*=sp-]{color:#5a0c0c}
 #app #scr-pdata .pd-cols>*:not(.pd-abil) span[class*=sk],#app #scr-pdata .pd-cols>*:not(.pd-abil) .chip,#app #scr-pdata .pd-cols>*:not(.pd-abil) em{color:#5a0c0c!important;font-weight:700}
+
+/* 令和テーマ v4: シネマ調の周辺減光と色調 */
+#scr-game #stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at 50% 46%,rgba(0,0,0,0) 52%,rgba(2,6,16,.38) 100%),linear-gradient(180deg,rgba(255,190,110,.05),rgba(20,40,90,.07))}
 </style>
 <!-- BBH42 v62: S0-2 年度別/通算成績UI・集計を実装 -->
 </head>
@@ -6064,6 +6067,7 @@ function startPlay(R,t,q){
   // 守備の送球先・走者への指示：選べる場面では、選択肢ごとの結果を同じ乱数で先に計算しておき、選ばれた結果に差し替える
   let dec=null;try{if(OPT.manualPlay!==false&&!G.auto){dec=playDecision(R);if(dec){const V=playVariants(R,dec);R=V.auto;dec=playDecision(R);if(dec)dec.V=V}}}catch(e){console.warn('decision',e);dec=null}
   const mv=buildMoves(R,F);
+  try{if(ball.visible&&q>0.5)FX.hit(ball.position.x,ball.position.y,ball.position.z,q)}catch(e){}
   U.play={R,t0:t+0.075,mv,F,shown:false,q,dec:dec?{...dec,chosen:null,until:decDeadline(R,dec)}:null};U.phase='play';
   const pw=clamp((R.sim.ev-30)/18,0,1);U.flashT=t;U.flashS=0.25+pw*0.35+(q>0.85?0.2:0);U.flashP=[U.pitch?U.pitch.tx:0,U.pitch?U.pitch.ty:0.8,0.05];U.shake=0.015+pw*0.05;
   // ヒットストップ：芯で捉えた強い打球ほど、当たった瞬間を一瞬止める（以後の時刻をすべて同じだけ後ろへずらす）
@@ -6191,6 +6195,66 @@ if(IS_TOUCH){try{sun.shadow.mapSize.set(1024,1024);renderer.shadowMap.type=THREE
 function perfTick(raw){if(window.PERF_LOCK||raw>0.5)return;PERF.ema=PERF.ema*0.94+raw*1000*0.06;if(++PERF.n%90)return;
   if(PERF.ema>23&&PERF.dpr>PERF.min){PERF.dpr=Math.max(PERF.min,+(PERF.dpr-0.25).toFixed(2));renderer.setPixelRatio(PERF.dpr)}
   else if(PERF.ema<14&&PERF.dpr<PERF.max){PERF.dpr=Math.min(PERF.max,+(PERF.dpr+0.25).toFixed(2));renderer.setPixelRatio(PERF.dpr)}}
+
+// ===== 令和FX：砂ぼこり・芝片・チョーク粉（打球の着弾・当たり・本塁クロス） =====
+const FX=(()=>{
+  const N=700,pos=new Float32Array(N*3),col=new Float32Array(N*4),siz=new Float32Array(N);
+  const vel=new Float32Array(N*3),life=new Float32Array(N),max=new Float32Array(N),s0=new Float32Array(N),s1=new Float32Array(N),a0=new Float32Array(N),grav=new Float32Array(N),rgb=new Float32Array(N*3);
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('pc',new THREE.BufferAttribute(col,4));geo.setAttribute('ps',new THREE.BufferAttribute(siz,1));
+  const mt=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{sc:{value:600}},
+    vertexShader:'attribute vec4 pc;attribute float ps;varying vec4 vc;uniform float sc;void main(){vc=pc;vec4 mv=modelViewMatrix*vec4(position,1.0);gl_Position=projectionMatrix*mv;gl_PointSize=ps*sc/max(0.5,-mv.z);}',
+    fragmentShader:'varying vec4 vc;void main(){vec2 q=gl_PointCoord-0.5;float d=length(q);float a=smoothstep(0.5,0.1,d);gl_FragColor=vec4(vc.rgb,vc.a*a);}'});
+  const pts=new THREE.Points(geo,mt);pts.frustumCulled=false;pts.renderOrder=20;W.add(pts);
+  let head=0;const c3=new THREE.Color();
+  function emit(x,y,z,vx,vy,vz,color,size,grow,alpha,ttl,g){
+    const i=head;head=(head+1)%N;pos[i*3]=x;pos[i*3+1]=y;pos[i*3+2]=z;vel[i*3]=vx;vel[i*3+1]=vy;vel[i*3+2]=vz;
+    c3.set(color);rgb[i*3]=c3.r;rgb[i*3+1]=c3.g;rgb[i*3+2]=c3.b;s0[i]=size;s1[i]=size*grow;a0[i]=alpha;max[i]=ttl;life[i]=ttl;grav[i]=g;
+  }
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  const api={
+    puff(x,z,k,dirt){ // 着弾：k=強さ(0..1)
+      const n=Math.round(6+k*18);
+      for(let j=0;j<n;j++){const a=Math.random()*6.283,sp=rnd(0.4,2.2)*(0.5+k);
+        emit(x+rnd(-.1,.1),0.04,z+rnd(-.1,.1),Math.cos(a)*sp,rnd(0.5,2.4)*(0.4+k),Math.sin(a)*sp,dirt?['#b88860','#a9774e','#c79a72'][j%3]:['#5f8a45','#6b9a4d','#9bb878'][j%3],rnd(.5,1.1),rnd(2.4,3.8),dirt?0.62:0.5,rnd(.5,1.1),-2.2)}
+      if(!dirt)for(let j=0;j<Math.round(4+k*10);j++){const a=Math.random()*6.283,sp=rnd(1,3.2)*(0.5+k);
+        emit(x,0.05,z,Math.cos(a)*sp,rnd(1.5,4)*(0.4+k),Math.sin(a)*sp,'#4d7a36',rnd(.08,.16),1,0.95,rnd(.5,.9),-9)}
+    },
+    chalk(x,z){for(let j=0;j<14;j++){const a=Math.random()*6.283,sp=rnd(.4,1.6);emit(x,0.05,z,Math.cos(a)*sp,rnd(.6,1.8),Math.sin(a)*sp,'#f3f1e8',rnd(.2,.45),rnd(2,3.2),0.6,rnd(.4,.9),-2)}},
+    hit(x,y,z,k){ // バットに当たった瞬間の小さな粉
+      const n=Math.round(4+k*8);for(let j=0;j<n;j++){const a=Math.random()*6.283,sp=rnd(.6,2.4)*(0.5+k);
+        emit(x,y,z,Math.cos(a)*sp,rnd(-.3,1.2),Math.sin(a)*sp-1,'#e8dcc6',rnd(.1,.22),rnd(1.6,2.6),0.55,rnd(.18,.42),-1)}
+    },
+    clear(){life.fill(0)},
+    update(dt){
+      let any=false;
+      for(let i=0;i<N;i++){
+        if(life[i]<=0){col[i*4+3]=0;siz[i]=0;continue}any=true;
+        life[i]-=dt;const u=1-Math.max(0,life[i])/max[i];
+        vel[i*3+1]+=grav[i]*dt;const dr=Math.exp(-dt*2.2);vel[i*3]*=dr;vel[i*3+2]*=dr;
+        pos[i*3]+=vel[i*3]*dt;pos[i*3+1]=Math.max(0.02,pos[i*3+1]+vel[i*3+1]*dt);pos[i*3+2]+=vel[i*3+2]*dt;
+        col[i*4]=rgb[i*3];col[i*4+1]=rgb[i*3+1];col[i*4+2]=rgb[i*3+2];col[i*4+3]=a0[i]*(1-u)*(1-u)*Math.min(1,u*8+0.3);siz[i]=s0[i]+(s1[i]-s0[i])*u;
+      }
+      geo.attributes.position.needsUpdate=geo.attributes.pc.needsUpdate=geo.attributes.ps.needsUpdate=true;
+      pts.visible=any;
+      mt.uniforms.sc.value=renderer.domElement.height/(2*Math.tan(camera.fov*Math.PI/360));
+    }
+  };
+  // ボールの着弾検出
+  let py=null,px=0,pz=0,pt=0;
+  api.watch=function(t,dt){
+    if(!ball.visible){py=null;return}
+    const b=ball.position;
+    if(py!=null&&dt>0&&py>0.2&&b.y<=0.2&&Math.hypot(b.x-px,b.z-pz)<8){
+      const sp=Math.hypot(b.x-px,b.z-pz)/dt;const k=Math.min(1,sp/30);
+      const dirt=Math.hypot(b.x,b.z-18.44)<29&&!(Math.abs(b.x)<16.2&&Math.abs(b.z-19.4)<16.2-Math.abs(b.x)*0+0&&false);
+      const inIn=Math.hypot(b.x,b.z-18.44)<29&&(Math.abs(b.x)+Math.abs(b.z-19.4)>16.2);
+      api.puff(b.x,b.z,k,inIn);
+    }
+    py=b.y;px=b.x;pz=b.z;pt=t;
+  };
+  return api;
+})();
 function frame(){
   requestAnimationFrame(frame);
   const t=now(),raw=t-lastF,dt=Math.min(0.05,raw);lastF=t;
@@ -6199,6 +6263,7 @@ function frame(){
   if(U.hs&&t<U.hs.until){animate(U.hs.until,0);renderer.render(scene,camera);perfTick(raw);return}// ヒットストップ
   if(!U.paused)step(t,dt);
   if(U.replay){const tv=replayT(t);animate(tv,dt*U.replay.sp)}else animate(t,dt);
+  try{FX.watch(t,dt);FX.update(dt)}catch(e){}
   renderer.render(scene,camera);perfTick(raw);
 }
 const keys={};
