@@ -2000,7 +2000,8 @@ function ratePitcher(a,npb){
   const control=clamp(Math.round(52+(3.2-bb9)*9*w+(3.3-era)*3*w),25,95);
   const perG=(npb&&ipNum(IPs0)>=25)?ipNum(IPs0)/Math.max(1,G0):ip/G,starter=stF!=null?stF:perG>=3.5;
   const vm=npb?veloOf(n,starter):null;
-  const speed=(vm?clamp(Math.round(vm.avg),120,165):0)||(OVR_P[n]?OVR_P[n]-(npb?5:0):0)||(clamp(Math.round(146+(k9-7.5)*2.2*w+(h%5)-2-(thr==='L'?2:0)+(starter?0:1))-(npb?VELO_FALL:0),npb?128:135,160));
+  const speed0=(vm?clamp(Math.round(vm.avg),120,165):0)||(OVR_P[n]?OVR_P[n]-(npb?5:0):0)||(clamp(Math.round(146+(k9-7.5)*2.2*w+(h%5)-2-(thr==='L'?2:0)+(starter?0:1))-(npb?VELO_FALL:0),npb?128:135,160));
+  const vgap=npb?(vm&&vm.max>vm.avg?clamp(Math.round(vm.max-vm.avg),3,11):5):0;const speed=speed0+vgap;
   const vsd=vm&&vm.max>vm.avg?clamp((vm.max-vm.avg)/2.3,1.2,3):1.2;
   const stamina=starter?clamp(Math.round(68+perG*7),80,125):clamp(Math.round(20+perG*8),22,40);
   const lv=clamp(Math.round(2.5+(3.8-era)*0.55*w+(k9-7)*0.35*w),1,7);
@@ -2012,7 +2013,7 @@ function ratePitcher(a,npb){
   const role=SVr>=5?'抑え':starter?'先発':HLDr>=15?'勝ちパ':'中継ぎ';
   const form=h%20<9?0:h%20<18?1:2;
   ps=applyPitchTraining(n,ps);
-  return{name:dispNameOf(n),orig:n,role,throws:thr,speed,vsd,vreal:!!vm,control,stamina,num:h%99+1,form,q:(3.8-era)*w+(k9-bb9)*0.15*w,sv:SVr,hld:HLDr,ip,starter,
+  return{name:dispNameOf(n),orig:n,role,throws:thr,speed,vgap,vsd,vreal:!!vm,control,stamina,num:h%99+1,form,q:(3.8-era)*w+(k9-bb9)*0.15*w,sv:SVr,hld:HLDr,ip,starter,
     line:(starter?`${G0}登板 ${IPs0}回 防${era0.toFixed(2)}`:`${G0}登板 ${SV0}S ${HLD0}H 防${era0.toFixed(2)}`)+(borrow>10?'（過去実績を加味）':''),
     pitches:[{t:'st',lv:0},...ps.split(' ').map(q=>({t:q.replace(/\d/g,''),lv:+q.replace(/\D/g,'')}))]};
 }
@@ -2163,7 +2164,7 @@ function poolOf(T){
   if(typeof RD26!=='undefined'&&RD26[T.id]){const R=roster26(T);return{b:R.all,p:R.pit}}
   const r=getRosterBase(T);
   const b=r.b.map(x=>Object.assign({},x,{orig:x.orig||x.name,prim:x.prim||x.pos,pa:x.pa||x.meet*6,line:x.line||T.short}));
-  const p=r.p.map(x=>{const s=x.role==='先発';return Object.assign({},x,{orig:x.orig||x.name,starter:s,ip:x.ip||(s?140:50),sv:x.sv||(x.role==='抑え'?30:0),hld:x.hld||(x.role==='中継ぎ'?15:0),q:x.q!=null?x.q:(x.control-50)/15+(x.speed-145)/10,line:x.line||T.short})});
+  const p=r.p.map(x=>{const s=x.role==='先発';return Object.assign({},x,{orig:x.orig||x.name,starter:s,ip:x.ip||(s?140:50),sv:x.sv||(x.role==='抑え'?30:0),hld:x.hld||(x.role==='中継ぎ'?15:0),q:x.q!=null?x.q:(x.control-50)/15+(x.speed-(x.vgap||0)-145)/10,line:x.line||T.short})});
   return{b,p};
 }
 function arrPool(T){
@@ -2562,7 +2563,7 @@ function makePitch(type,tgt,pit,fat,final){
   const tire=clamp((fat-0.65)*2.2,0,1);const _tid=(G&&G.t&&G.t[fieldIdx()])?G.t[fieldIdx()].id:null;const _cd=_tid?condOf(_tid,pit.orig||pit.name).m:0;const _wall=_tid?teamSkillOf(_tid):null;const _fz=_tid?fatOf(_tid,pit):0,_fv=_fz*0.035;const _PS=G&&G.r?gSk(pit,true):{};const ctrl=pit.control-tire*22-_fz*0.07+_cd*42+(_tid?4*tsLv(_tid,'wall')+2*tsLv(_tid,'ace'):0)+(_PS['対ピンチ']&&skRisp()?8*_PS['対ピンチ']:0);const sd=(105-ctrl)*0.0024;
   let tx=tgt.x+gauss(0,sd),ty=tgt.y+gauss(0,sd);
   if(type==='st'&&_PS&&_PS['シュート回転']<0&&Math.random()<0.35){tx*=0.7;ty=ty+(ZN.cy-ty)*0.3}// シュート回転：真っすぐが真ん中寄りに甘く入る
-  let kmh=type==='st'?Math.round(pit.speed-_fv+gauss(0,pit.vsd||1.2)):Math.round((pit.speed-_fv)*def.spd+gauss(0,1.5));
+  let kmh=type==='st'?Math.round(pit.speed-(pit.vgap||0)-_fv+gauss(0,pit.vsd||1.2)):Math.round((pit.speed-(pit.vgap||0)-_fv)*def.spd+gauss(0,1.5));
   kmh-=Math.round(tire*6);
   const hand=pit.throws==='L'?-1:1;
   const p0={x:-0.55*hand,y:1.85,z:17.1};
@@ -2855,7 +2856,7 @@ function userContact(p,dt,cur,mode,bat){
 }
 /* 打撃・投球の校正値（NPB公式 2025年セ・リーグ合計：打率.242 得点3.21/試合 本塁打0.63/試合 四球7.0% 三振19.5% 盗塁0.49/試合） */
 const QREF=135.5; // 球速の基準（実測の球速に直したためリーグ平均が約145.6km/hになった。旧150.4km/h時の140に相当）
-const BAT_CAL={chase:0.47,contact:0.55,foul:0.24,ev:1.015,steal:3.2,err:2.3,m2:1.8,m3:0.6,zsw:0.70,sbBase:0.63,pbase:39.6,pslope:0.083,sfloor:42,mslope:0.0022,run:0};
+const BAT_CAL={chase:0.47,contact:0.558,foul:0.24,ev:1.015,steal:3.2,err:2.3,m2:1.8,m3:0.6,zsw:0.70,sbBase:0.63,pbase:39.6,pslope:0.083,sfloor:42,mslope:0.0022,run:0};
 function cpuBat(p,bat){
   const e=Math.max(Math.abs(p.tx)/ZN.hx,Math.abs(p.ty-ZN.cy)/ZN.hy);
   const inZ=p.inZone,two=G.s===2;
