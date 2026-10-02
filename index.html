@@ -5502,11 +5502,13 @@ function lerpPose(o,A,B,e){o.eL=o.eR=null;o.pel.lerpVectors(A.pel,B.pel,e);o.rx=
 function mirrorPose(P){for(const k of ['pel','hL','hR','fL','fR'])P[k].x*=-1;if(P.eL)P.eL.x*=-1;if(P.eR)P.eR.x*=-1;let t=P.hL;P.hL=P.hR;P.hR=t;t=P.fL;P.fL=P.fR;P.fR=t;t=P.eL;P.eL=P.eR;P.eR=t;P.ry*=-1;P.rz*=-1;return P}
 const kp=(pel,rx,ry,hL,hR,fL,fR)=>({pel:new V3(...pel),rx,ry,rz:0,hL:new V3(...hL),hR:new V3(...hR),fL:new V3(...fL),fR:new V3(...fR)});
 const crs=(a,b,c,d,t)=>{const t2=t*t,t3=t2*t;return 0.5*(2*b+(c-a)*t+(2*a-5*b+4*c-d)*t2+(3*b-a-3*c+d)*t3)};
+const crsN=(a,b,c,d,e,t0,t1,t2,t3)=>{const e2=e*e,e3=e2*e,h=t2-t1,m1=(t2>t0?(c-a)/(t2-t0):0)*h,m2=(t3>t1?(d-b)/(t3-t1):0)*h;return(2*e3-3*e2+1)*b+(e3-2*e2+e)*m1+(-2*e3+3*e2)*c+(e3-e2)*m2};
 function keyed(o,keys,t){
   const n=keys.length;let i=1;
   if(t<=keys[0][0])i=1,t=keys[0][0];else if(t>=keys[n-1][0])i=n-1,t=keys[n-1][0];else while(i<n-1&&t>keys[i][0])i++;
   const e=clamp((t-keys[i-1][0])/(keys[i][0]-keys[i-1][0]),0,1);
   const A=keys[Math.max(0,i-2)][1],B=keys[i-1][1],C=keys[i][1],D=keys[Math.min(n-1,i+1)][1];
+  const T0=keys[Math.max(0,i-2)][0],T1=keys[i-1][0],T2=keys[i][0],T3=keys[Math.min(n-1,i+1)][0];const crs=(a,b,c,d,t)=>crsN(a,b,c,d,t,T0,T1,T2,T3);
   for(const k of ['pel','hL','hR','fL','fR']){o[k].set(crs(A[k].x,B[k].x,C[k].x,D[k].x,e),crs(A[k].y,B[k].y,C[k].y,D[k].y,e),crs(A[k].z,B[k].z,C[k].z,D[k].z,e))}
   for(const k of ['rx','ry','rz'])o[k]=crs(A[k],B[k],C[k],D[k],e);
   // 肘の向き（モーキャプ由来のキーだけが持つ）
@@ -5665,8 +5667,36 @@ function makePlayer(jersey,cap,pants,opt={}){
   return g;
 }
 const _sh=new V3(),_hp=new V3(),_mid=new V3(),_end=new V3(),_pole=new V3(),_k1=new V3(),_dir=new V3();
+
+/* ===== 慣性補間（インertialization）：姿勢が1コマで飛んだ瞬間だけ、その差を0.12秒で減衰させて滑らかにつなぐ。通常の動きには遅れを足さない ===== */
+let _FRAME=0;const INERT_TAU=0.12,_IV=['pel','hL','hR','fL','fR'],_IS=['rx','ry','rz'];
+function _zp(){const p=newPose();for(const k of _IV)p[k].set(0,0,0);for(const k of _IS)p[k]=0;return p}
+function _inEnsure(u){return u._in||(u._in={raw:_zp(),raw2:_zp(),off:_zp(),has:0,fr:-1,bat:new V3(),bat2:new V3(),boff:new V3(),hb:false})}
+function inertialize(u,P){
+  const I=_inEnsure(u),dt=Math.min(0.05,_FDT||0),O=I.off,R=I.raw,R2=I.raw2;
+  const addOff=()=>{for(const k of _IV)P[k].add(O[k]);for(const k of _IS)P[k]+=O[k];if(P.eL)P.eL.add(O.hL);if(P.eR)P.eR.add(O.hR);if(P.bat&&I.hb)P.bat.add(I.boff)};
+  if(I.fr===_FRAME&&I.out){for(const k of _IV)P[k].copy(I.out[k]);for(const k of _IS)P[k]=I.out[k];if(I.outBat&&P.bat)P.bat.copy(I.outBat);return}
+  if(dt<=1e-6){addOff();return}
+  I.fr=_FRAME;
+  if(I.has>=2){
+    let jump=false;
+    let cut=false;for(const k of _IV){const st=P[k].distanceTo(R[k]),ps=R[k].distanceTo(R2[k]);if(st>0.3+2.5*ps)jump=true;if(st>1.0)cut=true}
+    if(cut){for(const k of _IV)O[k].set(0,0,0);for(const k of _IS)O[k]=0;I.boff.set(0,0,0);jump=false}
+    if(!jump)for(const k of _IS){const st=Math.abs(P[k]-R[k]),ps=Math.abs(R[k]-R2[k]);if(st>0.7+2.5*ps){jump=true;break}}
+    if(jump){ // 直前に表示していた姿勢(=R+O)と新しい目標との差をオフセットに積む
+      for(const k of _IV)O[k].add(R[k]).sub(P[k]);for(const k of _IS)O[k]+=R[k]-P[k];
+      if(P.bat&&I.bat&&I.hb)I.boff.add(I.bat).sub(P.bat)}
+  }
+  const d=Math.exp(-dt/INERT_TAU);for(const k of _IV)O[k].multiplyScalar(d);for(const k of _IS)O[k]*=d;I.boff.multiplyScalar(d);
+  // 履歴は補間前の生の目標で更新
+  for(const k of _IV){R2[k].copy(R[k]);R[k].copy(P[k])}for(const k of _IS){R2[k]=R[k];R[k]=P[k]}
+  if(P.bat){I.bat2.copy(I.bat);I.bat.copy(P.bat);I.hb=true}else I.hb=false;
+  I.has++;addOff();
+  if(!I.out)I.out=newPose();for(const k of _IV)I.out[k].copy(P[k]);for(const k of _IS)I.out[k]=P[k];if(P.bat){I.outBat=I.outBat||new V3();I.outBat.copy(P.bat)}else I.outBat=null;
+}
 function applyPose(fig,P){
   const u=fig.userData,b=u.body,L=u.L;
+  try{inertialize(u,P)}catch(e){}
   b.position.copy(P.pel);b.rotation.set(P.rx,P.ry,P.rz);b.updateMatrix();
   for(const s of [-1,1]){const S=s<0?'L':'R';
     _hp.set(0.095*s,-0.04,0).applyMatrix4(b.matrix);
@@ -6285,7 +6315,7 @@ function step(t,dt){
       if(t-U.play.t0>=U.play.R.end){if(U.play.R.type==='HR'&&OPT.replay!==false&&!U.play.replayed&&!G.auto)startReplay(t);else finishPlay(t)}break;
   }
 }
-function animate(t,dt){_FDT=dt;
+function animate(t,dt){_FDT=dt;_FRAME++;
   const fs=fieldIdx(),bs=G.half;if(MOCAP.ready)mocapHide();
   for(let s=0;s<2;s++){FIG.field[s].forEach(f=>f.visible=s===fs);FIG.run[s].forEach(f=>f.visible=false);if(FIG.bat[s])FIG.bat[s].visible=false}
   const F=FIG.field[fs],RUN=FIG.run[bs],BAT=FIG.bat[bs];
