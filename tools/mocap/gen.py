@@ -75,3 +75,10 @@ json.dump(out,open('mc_data.json','w'),separators=(',',':'))
 print('bytes',os.path.getsize('mc_data.json'))
 a=np.array(out['p0']['d'])
 for i in [0,30,60,90,120,143]:print(i,'pel',a[i,:3],'hR',a[i,9:12],'fL',a[i,12:15],'fR',a[i,15:18])
+
+# ---- fielding: ground-ball scoop (64_26 Picking up Ball) ----
+from scoop import clip
+res,n,j=clip('26_09',1.3,2.2,3.0,0.3,0.35)
+out['scoop']=dict(t0=0,fps=60,rel=0.3,d=pack(res,range(n)))
+json.dump(out,open('mc_data.json','w'),separators=(',',':'))
+print('bytes',os.path.getsize('mc_data.json'))
