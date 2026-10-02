@@ -1803,7 +1803,31 @@ const PITCH={ // bx: 右投手の横変化(+で三塁側/右打者の外角へ) 
  sk:{n:'シンカー',bx:-0.7,by:0.75,spd:0.88,g:'sk'},
  scr:{n:'スクリュー',bx:-0.95,by:0.7,spd:0.86,g:'sk'},
 };
-const DIFF={easy:{n:'かんたん',ts:1.14,cur:1.18,win:1.2,cpu:-0.07},normal:{n:'ふつう',ts:1.03,cur:1,win:1,cpu:0},real:{n:'リアル',ts:1.0,cur:0.9,win:0.9,cpu:0.05}};
+/* COMの強さ：fool=緩急・球種・変化球に惑わされる度合い／cs=ボール球に手を出す度合い／zs=ストライクを見逃さない度合い／ev=打球の強さ／smart=COM投手の配球の賢さ */
+const DIFF={easy:{n:'かんたん',ts:1.14,cur:1.18,win:1.2,cpu:-0.07,fool:1.75,cs:1.3,zs:-0.05,ev:0.94,smart:0.15},normal:{n:'ふつう',ts:1.03,cur:1,win:1,cpu:0,fool:1,cs:1,zs:0,ev:1,smart:0.5},real:{n:'リアル',ts:1.0,cur:0.9,win:0.9,cpu:0.05,fool:0.5,cs:0.78,zs:0.04,ev:1.04,smart:0.92}};
+const COM_BASE=0.16; // 緩急・球種の補正を足したあとの全体の校正値（ふつうでNPB平均に合わせる）
+const PGRP={st:'f',ts:'f',sh:'f',ct:'f',sl:'b',hs:'b',vs:'b',sw:'b',cv:'b',sc:'b',dc:'b',kn:'b',fk:'o',sf:'o',sk:'o',pm:'o',ch:'o',cc:'o',sb:'o'};
+/* 打席内の配球履歴（COMの打者が「前の球との差」で惑わされる／球種を読む材料） */
+function paRecord(p){if(!G)return;if(G.b===0&&G.s===0||!G.pa||G.pa.bat!==curBatter())G.pa={bat:curBatter(),hist:[]};G.pa.hist.push({type:p.type,kmh:p.kmh,tx:p.tx,ty:p.ty,g:PGRP[p.type]||'f'});if(G.pa.hist.length>8)G.pa.hist.shift()}
+function comRead(p){
+  const D=DIFF[G.diff]||DIFF.normal,K=D.fool,hist=(G.pa&&G.pa.hist)||[],prev=hist[hist.length-1],g=PGRP[p.type]||'f';
+  const bm=Math.hypot(p.B.x,p.B.y);let cp=0,chase=0,zs=D.zs;
+  if(prev){
+    const d=prev.kmh-p.kmh;                                   // 緩急：前より遅い球は合わせにくい（速い球へのつまり・差し込みも少し）
+    cp-=(d>0?clamp(d/22,0,1)*0.2:clamp(-d/16,0,1)*0.06)*K;
+    if(Math.abs(p.ty-prev.ty)>0.4)cp-=0.03*K;                 // 高低の目付けのずれ
+    if(Math.abs(p.tx-prev.tx)>0.5)cp-=0.02*K;
+  }
+  if(hist.length>=2){
+    const cnt={f:0,b:0,o:0};hist.forEach(h=>cnt[h.g]++);const exp=cnt.f>=cnt.b&&cnt.f>=cnt.o?'f':cnt.b>=cnt.o?'b':'o';
+    if(g!==exp)cp-=0.04*K;else{cp+=0.035/Math.sqrt(K);zs+=0.03/Math.sqrt(K)}   // 球種を読まれる／裏をかく
+  }
+  cp-=0.08*clamp(bm/0.45,0,1.4)*Math.sqrt(K);                  // 変化量
+  cp+=COM_BASE;
+  if(!p.inZone){const e=Math.max(Math.abs(p.tx)/ZN.hx,Math.abs(p.ty-ZN.cy)/ZN.hy);
+    if(g!=='f'&&e<1.5)chase+=0.10*K*clamp(bm/0.4,0,1.3);        // ゾーンから落ちる変化球に手が出る
+    if(g==='f'&&p.ty>ZN.y1)chase+=0.04*K}                      // 高めの速球
+  return{cp,chase,zs}}
 
 /* ================= ユーティリティ ================= */
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -2780,10 +2804,12 @@ function cpuBat(p,bat){
   let sw=inZ?BAT_CAL.zsw+(two?0.25:0)-(G.b===3&&G.s<2?0.25:0):clamp(BAT_CAL.chase-bat.eye*0.004-(G&&G.t&&G.t[G.half]?tsLv(G.t[G.half].id,'eye'):0)*0.04,0.04,0.42)+(two?0.15:0)-(e>1.5?0.15:0);
   if(_bu==='aggr')sw+=(G.b+G.s===0?0.18:0.10);           // 積極打法：早いカウントで振る
   else if(_bu==='wait')sw-=inZ?0.06:0.14;                 // 待球：ボール球を振らない
+  const _rd=comRead(p),_D=DIFF[G.diff]||DIFF.normal;
+  if(inZ)sw+=_rd.zs;else sw=sw*_D.cs+_rd.chase;
   sw=clamp(sw,0.03,0.96);
   if(Math.random()>sw)return inZ?{k:'strike'}:{k:'ball'};
   const q0=(p.kmh-140)/20*0.12+p.lv*0.025+(inZ?Math.max(0,e-0.6)*0.2:0.18+(e-1)*0.3);
-  const adj=userBatting()?0:(DIFF[G.diff]||DIFF.normal).cpu;
+  const adj=(userBatting()?0:(DIFF[G.diff]||DIFF.normal).cpu)+_rd.cp;
   const _cb=(typeof PEN!=='undefined'&&PEN&&G.t[G.half])?condOf(G.t[G.half].id,bat.orig||bat.name).m:0;
   const _tsB=(typeof PEN!=='undefined'&&PEN&&G.t[G.half])?teamSkillOf(G.t[G.half].id):null;
   const _tsP=(typeof PEN!=='undefined'&&PEN&&G.t[1-G.half])?teamSkillOf(G.t[1-G.half].id):null;
@@ -2794,7 +2820,7 @@ function cpuBat(p,bat){
   if(Math.random()<BAT_CAL.foul+(inZ?0:0.1))return{k:'foul',swing:true};
   const q=Math.pow(Math.random(),1.25)*(inZ?1:0.75);
   let _evM=(1+_cb*0.55+_TE.ev)*_ss.ev*_sp.ev;
-  const ev=(BAT_CAL.pbase+bat.power*BAT_CAL.pslope)*(0.58+0.42*q)*_evM*BAT_CAL.ev;
+  const ev=(BAT_CAL.pbase+bat.power*BAT_CAL.pslope)*(0.58+0.42*q)*_evM*BAT_CAL.ev*(userBatting()?1:_D.ev);
   const launch=gauss(15,19)+(p.ty-ZN.cy)/ZN.hy*8-((p.type==='fk'||p.type==='sk')?6:0)+_ss.la;
   let sprayBias=-5;
   if(_bu==='pull')sprayBias=-20;else if(_bu==='oppo')sprayBias=10;
@@ -6077,6 +6103,7 @@ function launchPitch(type,tgt,t,final){
   const p=throwPitch(type,tgt,final);U.TS=userBat()?(DIFF[G.diff]||DIFF.normal).ts:1;
   U.pathUntil=0;U.swingMiss=false;U.pitch=p;U.wind=t;U.rel=t+1.0;if(userBat()&&G.diff==='easy')setTimeout(()=>{if(U.pitch===p)showPinfo(p)},1000);U.arrive=U.rel+p.T*U.TS;try{const kmh=p.kmh||p.speed||140;setTimeout(()=>{if(U.pitch===p)AudioDirector.playRelease(kmh)},1000)}catch(e){}U.swing=null;U.swingAnim=null;U.mittDone=false;
   if(!userBat())p.cpu=cpuBat(p,curBatter());
+  paRecord(p);
   U.lastHand=null;U.phase='windup';
 }
 function resolvePitch(t){
