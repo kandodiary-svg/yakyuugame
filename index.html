@@ -5520,7 +5520,7 @@ function numTex(n,fg,bg){const k=n+fg+bg;if(NUMC[k])return NUMC[k];const [c,g]=c
 /* ===== 選手モデル（胴体は頂点カラーで1メッシュに統合） ===== */
 const TOON_GRAD=(()=>{const d=new Uint8Array([70,150,230,255]);const t=new THREE.DataTexture(d,4,1,THREE.LuminanceFormat);t.minFilter=t.magFilter=THREE.NearestFilter;t.needsUpdate=true;return t})();
 const BODYMAT=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.82,metalness:0.0});
-const OUTMAT=new THREE.MeshBasicMaterial({color:'#1a1a22',side:THREE.BackSide});OUTMAT.visible=false;
+const OUTMAT=new THREE.MeshBasicMaterial({color:'#1a1a22',side:THREE.BackSide});OUTMAT.visible=true;
 const MTC={};function matT(c){return MTC[c]||(MTC[c]=new THREE.MeshStandardMaterial({color:c,roughness:0.82,metalness:0.0}))}
 function faceTex(hair,skin){const k=hair+skin;if(FACEC[k])return FACEC[k];const W_=384,H_=288;const [c,g]=cvs(W_,H_);
   const sk=new THREE.Color(skin),sh=sk.clone().multiplyScalar(0.72),hi=sk.clone().lerp(new THREE.Color('#fff'),0.18);
@@ -5629,7 +5629,7 @@ function wordTex(txt,fg,edge){const k=txt+fg+edge;if(WORDC[k])return WORDC[k];co
 function makePlayer(jersey,cap,pants,opt={}){
   const g=new THREE.Group(),body=new THREE.Group();g.add(body);body.rotation.order='YXZ';
   const skin=opt.skin||SKINS[(opt.num||0)%3],hair=HAIRS[(opt.num||0)%4],trim=opt.trim||'#1d1d1d',sock=opt.sock||jersey;
-  const HS=1.16,HP=(p)=>[p[0]*HS,0.7+(p[1]-0.7)*HS,p[2]*HS],HSc=(sc)=>(sc||[1,1,1]).map(v=>v*HS);
+  const HS=1.42,HP=(p)=>[p[0]*HS,0.7+(p[1]-0.7)*HS,p[2]*HS],HSc=(sc)=>(sc||[1,1,1]).map(v=>v*HS);
   const parts=[
     {g:MG.pants,c:pants,s:[1,1,0.78]},{g:MG.belt,p:[0,0.065,0],s:[1,1,0.78],c:'#1d1d1d'},
     {g:MG.torso,c:jersey,s:[1,1,0.7]},{g:MG.strip,p:[0,0.34,0.12],c:trim},
