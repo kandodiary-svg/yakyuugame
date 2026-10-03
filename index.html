@@ -6191,7 +6191,14 @@ const predTex=(()=>{const [c,g]=cvs(256,256);// 着弾予測：強振カーソ�
   g.strokeStyle='#ffffff';g.lineWidth=9;g.beginPath();g.arc(128,128,82,0,7);g.stroke();g.setLineDash([]);
   g.fillStyle='rgba(255,255,255,.9)';g.beginPath();g.arc(128,128,14,0,7);g.fill();g.strokeStyle='rgba(0,0,0,.6)';g.lineWidth=4;g.stroke();
   return tex(c)})();
+const predTexS=(()=>{const [c,g]=cvs(256,256);// 変化球の「実際に通過する位置」：実線の二重リング＋中心点（曲がる前の破線マーカーと区別）
+  g.strokeStyle='rgba(0,0,0,.55)';g.lineWidth=20;g.beginPath();g.arc(128,128,76,0,7);g.stroke();g.strokeStyle='#ffffff';g.lineWidth=12;g.beginPath();g.arc(128,128,76,0,7);g.stroke();
+  g.fillStyle='#ffffff';g.beginPath();g.arc(128,128,20,0,7);g.fill();g.strokeStyle='rgba(0,0,0,.6)';g.lineWidth=5;g.stroke();
+  return tex(c)})();
 const predM=new THREE.Mesh(new THREE.PlaneGeometry(0.30,0.30),new THREE.MeshBasicMaterial({map:predTex,...OVL}));predM.renderOrder=13;predM.visible=false;W.add(predM);
+// 変化球：曲がる前のコース（黄の薄いマーカー）と、実際に通過する位置（白）を線でつなぐ
+const predG=new THREE.Mesh(new THREE.PlaneGeometry(0.30,0.30),new THREE.MeshBasicMaterial({map:predTex,...OVL,color:0xffd23a}));predG.renderOrder=12;predG.visible=false;W.add(predG);
+const predL=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineDashedMaterial({color:0xffd23a,dashSize:0.035,gapSize:0.03,...OVL}));predL.renderOrder=11;predL.visible=false;W.add(predL);
 /* 投球の狙い */
 function aimTex(){const [c,g]=cvs(256,256);g.strokeStyle='rgba(0,0,0,.5)';g.lineWidth=22;g.beginPath();g.arc(128,128,92,0,7);g.stroke();
   g.strokeStyle='#ff3b30';g.lineWidth=14;g.beginPath();g.arc(128,128,92,0,7);g.stroke();
@@ -6743,7 +6750,7 @@ function animate(t,dt){_FDT=dt;_FRAME++;
   const F=FIG.field[fs],RUN=FIG.run[bs],BAT=FIG.bat[bs];
   const pit=curPitcher();const Lp=pit.throws==='L';
   let bx=null,by=0,bz=0,bvMode='hand',bvU=0;
-  zoneGrp.visible=false;cursor.visible=false;aimM.visible=false;markM.visible=false;tring.visible=false;predM.visible=false;
+  zoneGrp.visible=false;cursor.visible=false;aimM.visible=false;markM.visible=false;tring.visible=false;predM.visible=false;predG.visible=false;predL.visible=false;
   if(U.phase==='play'){
     const P=U.play,R=P.R,pt=t-P.t0;
     F.forEach((f,i)=>{const [x,z]=fpos(P,i,pt),m=P.mv[i];const moving=pt>m.t0&&d2([x,z],m.to)>0.2||(m.leg2&&pt>m.leg2.t0&&d2([x,z],m.leg2.to)>0.2);
@@ -6813,7 +6820,10 @@ function animate(t,dt){_FDT=dt;_FRAME++;
       if(p&&U.phase==='flight'&&(OPT.assist==='on'||(OPT.assist==='auto'&&(G.diff==='easy'||G.diff==='normal')))){const k=Math.min(1,dt*2.2)*(G.diff==='easy'||OPT.assist==='on'?0.5:0.3);U.cursor.x+=(p.tx-U.cursor.x)*k;U.cursor.y+=(p.ty-U.cursor.y)*k}}
     else tring.visible=false;
     if(p&&U.phase==='flight'&&(userBat()||G.auto)){const st=predStart();if(st<1){const f=window.TROVR!=null?window.TROVR:clamp((t-U.rel)/(U.arrive-U.rel),0,1);
-      if(f>=st&&(window.TROVR!=null||t>=U.rel)){predM.visible=true;const e=(f-st)/Math.max(0.01,1-st);{const kk=breakK(pitchProfile(p.type),f),sx=p.sx!=null?p.sx:p.tx,sy=p.sy!=null?p.sy:p.ty;predM.position.set(sx+(p.tx-sx)*kk,sy+(p.ty-sy)*kk,0.02)}predM.scale.setScalar(0.60-e*0.10);predM.material.opacity=0.85+0.15*e;predM.material.color.set('#ffffff')}}}
+      if(f>=st&&(window.TROVR!=null||t>=U.rel)){predM.visible=true;const e=(f-st)/Math.max(0.01,1-st),sx=p.sx!=null?p.sx:p.tx,sy=p.sy!=null?p.sy:p.ty;
+        predM.position.set(p.tx,p.ty,0.02);const ck=Math.max(1,camera.position.z/9);predM.scale.setScalar((0.74-e*0.10)*ck);predM.material.opacity=0.9+0.1*e;predM.material.color.set('#ffffff');
+        if(Math.hypot(p.tx-sx,p.ty-sy)>0.04){if(predM.material.map!==predTexS){predM.material.map=predTexS;predM.material.needsUpdate=true}predG.visible=true;predG.position.set(sx,sy,0.018);predG.scale.setScalar(0.58*ck);predG.material.opacity=0.85;
+          const a=predL.geometry.attributes.position;a.setXYZ(0,sx,sy,0.017);a.setXYZ(1,p.tx,p.ty,0.017);a.needsUpdate=true;predL.computeLineDistances();predL.visible=true}else{if(predM.material.map!==predTex){predM.material.map=predTex;predM.material.needsUpdate=true}predG.visible=false;predL.visible=false}}else{predG.visible=false;predL.visible=false}}}
     if(U.phase==='aim'){aimM.visible=true;aimM.position.set(U.aim.x,U.aim.y,0);aimM.scale.setScalar(Math.max(1,camera.position.z/10))}
     if(U.lastMark&&t<U.lastMark.until&&(U.phase==='wait')){markM.visible=true;markM.position.set(U.lastMark.x,U.lastMark.y,0.02);markM.scale.setScalar(Math.max(1.3,camera.position.z/8))}
   }
@@ -9220,7 +9230,7 @@ function renderParr(){
 $('#parrBack').onclick=()=>{if(PLU.cur){PLU.cur=null;renderParr()}else{AUI.cur=null;renderArr();show('arr')}};
 
 
-function titleCam(t){if(FIG)FIG.all.forEach(o=>o.visible=false);ball.visible=false;blob.visible=false;[zoneGrp,cursor,aimM,markM,trail,flash,tring,predM,pathLine].forEach(o=>{if(o)o.visible=false});pathDots.forEach(m=>m.visible=false);ghosts.forEach(m=>m.visible=false);
+function titleCam(t){if(FIG)FIG.all.forEach(o=>o.visible=false);ball.visible=false;blob.visible=false;[zoneGrp,cursor,aimM,markM,trail,flash,tring,predM,predG,predL,pathLine].forEach(o=>{if(o)o.visible=false});pathDots.forEach(m=>m.visible=false);ghosts.forEach(m=>m.visible=false);
   const a=t*0.05,r=46;camera.position.set(Math.sin(a)*r,15+Math.sin(t*0.13)*3,-18+Math.cos(a)*r*0.6);camera.fov=camera.aspect<1?62:48;camera.updateProjectionMatrix();camera.lookAt(0,2,48)}
 function resize(){const host=cv.parentNode||stage;const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
 window.addEventListener('resize',resize);
@@ -9465,7 +9475,7 @@ function showHelp(force){
   m.innerHTML=`<div class="sheet help"><h3 class="head">操作説明</h3>
    <div class="hs"><b>打つとき</b>
    <ol><li>画面の<b>どこでも</b>指を置いてドラッグ → 黄色の<b>ミートカーソル</b>が動く（指の真下に来なくてOK）</li>
-   <li>ボールが近づくと<b>点線の円（着弾予測）</b>が出る。そこにカーソルを合わせる</li><li>白い<b>リング</b>が縮んでいき、カーソルと<b>重なった瞬間</b>が打ち頃</li>
+   <li>ボールが近づくと<b>点線の円（着弾予測）</b>が出る。そこにカーソルを合わせる</li><li>変化球は2つ出ます：<b>黄色の破線＝曲がる前のコース</b>、<b>白い実線の二重丸＝実際に通る位置</b>。カーソルは白い方に合わせます</li><li>白い<b>リング</b>が縮んでいき、カーソルと<b>重なった瞬間</b>が打ち頃</li>
    <li>その瞬間に<b>指を離す</b>とスイング。「バント」を選ぶとバットを寝かせて当てるだけ（走者を進めたいときに）</li>
    <li>ボールがカーソルの中心より<b>上ならフライ</b>、<b>下ならゴロ</b>。早く振ると引っ張り、遅いと流し打ち</li>
    <li>スイング後に「タイミング」と「ボールの位置」が出るので、次の打席で修正</li></ol></div>
