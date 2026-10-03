@@ -1466,6 +1466,32 @@ table td,.yt td,.pn-d,.tr-p em{font-variant-numeric:tabular-nums}
 #app .pvwWrap .pvwCap{max-width:calc(100% - 160px)!important}
 #app #parrBody>*,#app #arrBody>*{flex-shrink:0}
 #app #scr-parr .pcard{flex:none}
+
+/* ===== オーダー：カードの能力表示・ドラッグ操作・守備位置メニュー ===== */
+#app #scr-order .pw-r.oc{display:block!important;padding:7px 8px 8px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;transition:transform .12s,box-shadow .12s}
+.oc-top{display:flex;align-items:center;gap:6px}
+.oc-top .pw-plate{flex:1;min-width:0}
+.oc-hand{font-size:11px;font-weight:800;color:#4a5b70;background:#eef3fa;border-radius:6px;padding:2px 5px;white-space:nowrap}
+.oc-top button.pw-pos{border:0;font:inherit;min-width:44px;height:30px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;gap:2px;font-size:15px;box-shadow:0 2px 0 rgba(0,0,0,.25);cursor:pointer}
+.oc-top button.pw-pos s{text-decoration:none;font-size:9px;opacity:.85}
+.oc-st{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:6px}
+.ocs{display:flex;align-items:center;justify-content:center;gap:3px;background:#f2f6fc;border-radius:8px;padding:3px 2px;border:1px solid #e1e9f4}
+.ocs i{font-style:normal;font-size:10.5px;font-weight:800;color:#4a5b70}
+.ocs b{min-width:19px;height:19px;border-radius:5px;background:var(--c);color:#fff;font-size:12px;font-weight:900;display:grid;place-items:center;padding:0 3px}
+.ocs u{text-decoration:none;font-size:11px;font-weight:800;color:#22303f}
+.oc-note{grid-column:span 2;font-size:11px;color:#6b7a8c;align-self:center;text-align:right;font-weight:700}
+.pw-prow .oc-st{grid-template-columns:repeat(3,1fr) 2fr}
+.pw-r.oc.dragging{opacity:.35}
+.oc-ghost{box-shadow:0 14px 30px rgba(0,0,0,.45)!important;transform:scale(1.03) rotate(-1deg);opacity:.96;background:#fff;border-radius:16px;padding:7px 8px 8px;display:block!important;border:2px solid #ff8a1f}
+.pw-r.oc.drop-hot{outline:3px dashed #ff8a1f;outline-offset:1px;background:#fff1d6!important;transform:scale(1.015)}
+.ppk{max-width:380px}.ppk-hint{font-size:11.5px;color:#6b7a8c;line-height:1.5;margin:4px 0 8px}
+.ppk-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ppk-b{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;align-items:center;column-gap:6px;padding:8px;border-radius:12px;border:2px solid transparent;color:#fff;font:inherit;text-align:left}
+.ppk-b b{font-size:20px;grid-row:1}.ppk-b i{font-style:normal;font-size:15px;text-align:right;grid-row:1}.ppk-b small{grid-column:1/-1;font-size:11px;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ppk-b.bt{background:#c8323a}.ppk-b.inf{background:#2b6fc0}.ppk-b.of{background:#2e9e52}.ppk-b.dh{background:#8a6d3b}.ppk-b.pit{background:#6c3fa8}
+.ppk-b.cur{border-color:#ffd24a;box-shadow:0 0 0 2px rgba(255,210,74,.5)}
+#app #scr-order .oc-top span.pw-pos{min-width:44px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;padding:0 6px}
+#app #scr-order .pw-colhead{position:static}
 </style>
 <!-- BBH42 v62: S0-2 年度別/通算成績UI・集計を実装 -->
 </head>
@@ -5261,13 +5287,17 @@ function renderOrder26(){
   const face=b=>{const c=(typeof PEN!=='undefined'&&PEN&&PEN.cond)?condOf(OE2.team,b.orig):null;
     if(c)return c.ic;const t=(b.meet+b.power)/2;return t>=78?'😊':t>=66?'🙂':t>=56?'😐':'😞'};
   const army=o=>F.has(o)?'<em class="army f">2軍</em>':'<em class="army">1軍</em>';
-  const row=(b,pos,no,isSel,attr)=>`<div class="pw-r${isSel?' sel':''}${F.has(b.orig)?' isfarm':''}" ${attr}>
-    <span class="pw-no">${no}</span>
-    <span class="pw-plate ${plate(b)}">${b.name}</span>
-    ${army(b.orig)}
-    <span class="pw-face">${face(b)}</span>
-    <span class="pw-pos ${posCls(pos)}" ${pos&&no?`data-p="${b.orig}"`:''}>${pos}</span>
-    <span class="pw-bar">${gr('ミ',b.meet)}${gr('パ',b.power)}${gr('走',b.speed)}${gr('肩',b.arm)}<span style="margin-left:auto">${b.bats==='S'?'両':b.bats==='L'?'左':'右'}打</span></span>
+  const stc=(lb,v)=>`<span class="ocs" style="--c:${GC[G_(v)]}"><i>${lb}</i><b>${G_(v)}</b><u>${v}</u></span>`;
+  const row=(b,pos,no,isSel,attr)=>`<div class="pw-r oc${isSel?' sel':''}${F.has(b.orig)?' isfarm':''}" ${attr}>
+    <div class="oc-top">
+      <span class="pw-no">${no}</span>
+      <span class="pw-plate ${plate(b)}">${b.name}</span>
+      <span class="oc-hand">${b.bats==='S'?'両':b.bats==='L'?'左':'右'}打</span>
+      ${army(b.orig)}
+      <span class="pw-face">${face(b)}</span>
+      ${pos&&no?`<button class="pw-pos ${posCls(pos)}" data-p="${b.orig}" aria-label="守備位置を変える">${pos}<s>▾</s></button>`:`<span class="pw-pos ${posCls(pos)}">${pos}</span>`}
+    </div>
+    <div class="oc-st">${stc('ミ',b.meet)}${stc('パ',b.power)}${stc('走',b.speed)}${stc('肩',b.arm)}${stc('守',b.fielding==null?55:b.fielding)}</div>
   </div>`;
   const sp=OE2.spn?R.pit.find(q=>q.orig===OE2.spn):(R.rot&&R.rot[0]);
   let h=`<div class="pw-wrap">
@@ -5283,12 +5313,13 @@ function renderOrder26(){
   OE2.lineup.forEach((x,i)=>{const b=by(x.n);if(!b)return;
     h+=row(b,x.pos,i+1,sel&&((sel.k==='o'&&sel.i===i)||(sel.k==='p'&&sel.n===b.orig)),`data-o="${i}"`)});
   /* 投手の行（パワプロのP行） */
-  h+=`<div class="pw-r pw-prow" data-sprow="1"><span class="pw-no">P</span>
+  h+=`<div class="pw-r oc pw-prow" data-sprow="1"><div class="oc-top"><span class="pw-no">P</span>
       <span class="pw-plate ${sp&&sp.throws==='L'?'pwG':'pwB'}">${sp?sp.name:'—'}</span>
+      <span class="oc-hand">${sp?(sp.throws==='L'?'左':'右')+'投':''}</span>
       ${sp?army(sp.orig):'<em class="army">1軍</em>'}
       <span class="pw-face">${sp?(sp.control>=70?'😊':sp.control>=58?'🙂':'😐'):''}</span>
-      <span class="pw-pos pit">投</span>
-      <span class="pw-bar">${sp?`<span>球速</span><b style="color:#e8661a">${sp.speed}</b><span>km</span>${gr('制',sp.control)}`:''}<span style="margin-left:auto">${OE2.dh?'DH制のため打席なし':'9番に入ります'}</span></span></div>`;
+      <span class="pw-pos pit">投</span></div>
+    ${sp?`<div class="oc-st"><span class="ocs" style="--c:#e8661a"><i>球速</i><b>${sp.speed}</b><u>km</u></span>${stc('制',sp.control)}${stc('ス',Math.min(99,Math.round((sp.stamina||60)*0.72)))}<span class="oc-note">${OE2.dh?'DH制のため打席なし':'9番に入ります'}</span></div>`:''}</div>`;
   h+=`</div></div><div><div class="pw-colhead">控え</div><div class="pw-list pw-bench2">`;
   R.all.filter(b=>!inL.has(b.orig)).sort((a,b)=>(F.has(a.orig)?1:0)-(F.has(b.orig)?1:0)||b.pa-a.pa)
     .forEach(b=>{h+=row(b,b.prim,'',sel&&sel.k==='b'&&sel.n===b.orig,`data-b="${b.orig}"`)});
@@ -5304,7 +5335,7 @@ function renderOrder26(){
     h+=`</div></div>`;
   }
   h+=`</div>`;
-  h+=`<div class="pw-hint2"><b>タップ</b>＝選手の能力を見る　／　<b>長押し</b>＝選択（もう一度長押しで入れ替え・交代）<br>守備位置（右の四角）をタップ → 2つ選んで<b>守備入れ替え</b>　／　「1軍/2軍」バッジで<b>昇格・降格</b></div>`;
+  h+=`<div class="pw-hint2"><b>タップ</b>＝選手の能力を見る　／　<b>守備位置のボタン</b>をタップ＝守る位置を選んで変更<br><b>長押ししてドラッグ</b>→別の選手のカードに<b>ドロップ</b>＝打順の入れ替え／控えとの交代　／　「1軍/2軍」バッジで<b>昇格・降格</b></div>`;
   h+=`<div class="pw-act">${OE2.mode==='game'?'<button class="btn primary" id="ordPlay2">この内容で試合開始 ▶</button>':'<button class="btn primary" id="ordSave">保存</button>'}<button class="btn" id="ordReset">自動オーダーに戻す</button></div></div>`;
   const body=$('#ordBody');body.innerHTML=h;
   body.querySelectorAll('[data-dh]').forEach(b=>b.onclick=()=>{
@@ -5320,25 +5351,55 @@ function renderOrder26(){
     const r=toggleFarm(OE2.team,orig,isPit);
     if(!r.ok&&r.msg)telopMini&&telopMini(r.msg);
     renderOrder26()});
-  /* タップ＝選手情報、長押し＝移動/入れ替え */
-  const ordMove=(k,v)=>{
-    const L=OE2.lineup;
-    if(k==='o'){const i=v;
-      if(OE2.sel&&OE2.sel.k==='o'){if(OE2.sel.i!==i)[L[i],L[OE2.sel.i]]=[L[OE2.sel.i],L[i]];OE2.sel=null}
-      else if(OE2.sel&&OE2.sel.k==='b'){L[i]={n:OE2.sel.n,pos:L[i].pos};OE2.sel=null}
-      else OE2.sel={k:'o',i};}
-    else if(k==='b'){const n=v;
-      if(OE2.sel&&OE2.sel.k==='o'){L[OE2.sel.i]={n,pos:L[OE2.sel.i].pos};OE2.sel=null}else OE2.sel={k:'b',n};}
-    else if(k==='p'){const n=v;
-      if(OE2.sel&&OE2.sel.k==='p'){const a=L.find(x=>x.n===n),c=L.find(x=>x.n===OE2.sel.n);
-        if(a&&c&&a!==c)[a.pos,c.pos]=[c.pos,a.pos];OE2.sel=null}else OE2.sel={k:'p',n};}
-    renderOrder26();
-  };
-  body.querySelectorAll('[data-o]').forEach(el=>{const i=+el.dataset.o;const b=by(OE2.lineup[i].n);
-    bindHold(el,()=>{if(b)showPlayerPop(OE2.team,b.orig,false)},()=>ordMove('o',i))});
-  body.querySelectorAll('[data-b]').forEach(el=>{const n=el.dataset.b;
-    bindHold(el,()=>showPlayerPop(OE2.team,n,false),()=>ordMove('b',n))});
-  body.querySelectorAll('[data-p]').forEach(el=>{el.onclick=ev=>{ev.stopPropagation();ordMove('p',el.dataset.p)}});
+  /* タップ＝選手情報、守備位置ボタン＝位置の変更、長押ししてドラッグ＝ドロップで入れ替え */
+  const doDrop=(a,b)=>{const L=OE2.lineup;if(!a||!b||(a.k===b.k&&a.v===b.v))return;
+    if(a.k==='o'&&b.k==='o'){[L[a.v],L[b.v]]=[L[b.v],L[a.v]]}
+    else if(a.k==='o'&&b.k==='b'){L[a.v]={n:b.v,pos:L[a.v].pos}}
+    else if(a.k==='b'&&b.k==='o'){L[b.v]={n:a.v,pos:L[b.v].pos}}
+    else return;
+    OE2.sel=null;renderOrder26()};
+  const keyOf=el=>el.dataset.o!=null?{k:'o',v:+el.dataset.o}:el.dataset.b!=null?{k:'b',v:el.dataset.b}:null;
+  const posPick=orig=>{const L=OE2.lineup,x=L.find(q=>q.n===orig),pb=by(orig);if(!x||!pb)return;
+    const opts=['捕','一','二','三','遊','左','中','右',L.some(q=>q.pos==='指')?'指':L.some(q=>q.pos==='投')?'投':(OE2.dh?'指':'投')];
+    const mark=p=>{if(p==='指'||p==='投')return'';let a=7;try{a=posApt(OE2.team,pb,p)}catch(e){}return a>=7?'◎':a>=5?'○':a>=3?'△':a>=1?'▲':'×'};
+    const el=document.createElement('div');el.className='pop-wrap';
+    el.innerHTML=`<div class="pop ppk"><div class="pop-h"><span class="pop-nm">${pb.name}</span><span class="pop-tag">現在：${x.pos}</span></div>
+      <div class="ppk-hint">守る位置を選ぶと、その位置を守っている選手と入れ替わります（◎本職 ○ふつう △やや苦手 ▲苦手 ×守れない）</div>
+      <div class="ppk-g">${opts.map(p=>{const h=L.find(q=>q.pos===p),hb=h&&by(h.n);return `<button class="ppk-b ${posCls(p)}${p===x.pos?' cur':''}" data-pp="${p}"><b>${p}</b><i>${mark(p)}</i><small>${hb?hb.name:'—'}</small></button>`}).join('')}</div>
+      <button class="btn" id="ppkX" style="width:100%;margin-top:10px">キャンセル</button></div>`;
+    document.body.appendChild(el);const close=()=>el.remove();
+    el.onclick=e=>{if(e.target===el)close()};el.querySelector('#ppkX').onclick=close;
+    el.querySelectorAll('[data-pp]').forEach(bt=>bt.onclick=()=>{const p=bt.dataset.pp;close();if(p===x.pos)return;
+      const h=L.find(q=>q.pos===p&&q!==x);if(h)h.pos=x.pos;x.pos=p;renderOrder26()})};
+  const ordDrag=(el,onTap)=>{
+    let sx=0,sy=0,timer=null,drag=null,hot=null,raf=0,py=0,dead=false;
+    const scroller=()=>{let n=el.parentElement;while(n&&n!==document.body){const o=getComputedStyle(n).overflowY;if((o==='auto'||o==='scroll')&&n.scrollHeight>n.clientHeight+2)return n;n=n.parentElement}return document.scrollingElement};
+    const noScroll=e=>{if(drag&&e.cancelable)e.preventDefault()};
+    const begin=e=>{if(dead)return;const r=el.getBoundingClientRect();
+      const g=el.cloneNode(true);g.classList.add('oc-ghost');g.style.cssText=`position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;pointer-events:none;z-index:200`;document.body.appendChild(g);
+      el.classList.add('dragging');drag={g,ox:e.clientX-r.left,oy:e.clientY-r.top};if(navigator.vibrate)navigator.vibrate(18);
+      document.addEventListener('touchmove',noScroll,{passive:false});tick()};
+    const tick=()=>{if(!drag)return;const sc=scroller(),H=window.innerHeight,z=80;
+      if(sc){if(py<z+60)sc.scrollTop-=Math.min(9,(z+60-py)*0.12);else if(py>H-z)sc.scrollTop+=Math.min(9,(py-(H-z))*0.12)}raf=requestAnimationFrame(tick)};
+    const move=e=>{py=e.clientY;
+      if(drag){drag.g.style.left=(e.clientX-drag.ox)+'px';drag.g.style.top=(e.clientY-drag.oy)+'px';
+        drag.g.style.display='none';const t=document.elementFromPoint(e.clientX,e.clientY);drag.g.style.display='';
+        const tr=t&&t.closest('[data-o],[data-b]');const a=keyOf(el),b=tr&&keyOf(tr);
+        const ok=tr&&tr!==el&&!(a.k==='b'&&b.k==='b');if(hot&&hot!==tr){hot.classList.remove('drop-hot');hot=null}if(ok&&hot!==tr){tr.classList.add('drop-hot');hot=tr}return}
+      if(timer){const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.hypot(dx,dy)>8){clearTimeout(timer);timer=null;if(e.pointerType==='mouse')begin(e);else dead=true}}};
+    const end=(e,cancel)=>{clearTimeout(timer);timer=null;
+      document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);document.removeEventListener('pointercancel',cn);document.removeEventListener('touchmove',noScroll);
+      if(drag){cancelAnimationFrame(raf);drag.g.remove();el.classList.remove('dragging');const h=hot;if(hot)hot.classList.remove('drop-hot');drag=null;hot=null;
+        if(!cancel&&h)doDrop(keyOf(el),keyOf(h));return}
+      if(!cancel&&!dead&&e&&onTap)onTap()};
+    const up=e=>end(e,false),cn=e=>end(e,true);
+    el.addEventListener('pointerdown',e=>{if(e.button>0||e.target.closest('.army,.pw-pos'))return;dead=false;sx=e.clientX;sy=e.clientY;py=sy;
+      document.addEventListener('pointermove',move);document.addEventListener('pointerup',up);document.addEventListener('pointercancel',cn);
+      timer=setTimeout(()=>{timer=null;begin(e)},320)});
+    el.addEventListener('contextmenu',e=>e.preventDefault())};
+  body.querySelectorAll('[data-o]').forEach(el=>{const i=+el.dataset.o;const b=by(OE2.lineup[i].n);ordDrag(el,()=>{if(b)showPlayerPop(OE2.team,b.orig,false)})});
+  body.querySelectorAll('[data-b]').forEach(el=>{const n=el.dataset.b;ordDrag(el,()=>showPlayerPop(OE2.team,n,false))});
+  body.querySelectorAll('button[data-p]').forEach(el=>{el.onclick=ev=>{ev.stopPropagation();posPick(el.dataset.p)};el.onpointerdown=ev=>ev.stopPropagation()});
   body.querySelectorAll('.army').forEach(el=>{el.onclick=ev=>{ev.stopPropagation();
     const row=el.closest('[data-o],[data-b],[data-sp]');if(!row)return;
     const orig=row.dataset.b||row.dataset.sp||(by(OE2.lineup[+row.dataset.o].n)||{}).orig;
