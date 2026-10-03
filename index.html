@@ -1370,6 +1370,80 @@ table td,.yt td,.pn-d,.tr-p em{font-variant-numeric:tabular-nums}
 
 /* 令和テーマ v4: シネマ調の周辺減光と色調 */
 #scr-game #stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at 50% 46%,rgba(0,0,0,0) 52%,rgba(2,6,16,.38) 100%),linear-gradient(180deg,rgba(255,190,110,.05),rgba(20,40,90,.07))}
+
+/* ===== アレンジ画面の見やすさ改善 ===== */
+#app #scr-parr #parrBody,#app #scr-arr #arrBody{max-width:680px}
+.pvwBox{height:150px!important}
+.pvwWrap{padding:4px 0 6px!important;background:linear-gradient(#0b1530 88%,rgba(11,21,48,0))!important}
+.pvwWrap .ovrRow{position:absolute;top:10px;right:10px;margin:0;gap:6px;padding:3px 10px;border-radius:12px;background:rgba(8,16,36,.78);font-size:12px;color:#cfe0ff}
+.pvwWrap .ovrRow b{font-size:22px;color:#fff;line-height:1}
+.ptabs{display:flex;gap:6px;margin-top:8px;overflow-x:auto;scrollbar-width:none;align-items:center}
+.ptabs::-webkit-scrollbar{display:none}
+#app #parrBody .ptabs button{flex:1 0 auto;min-height:40px;padding:0 14px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#d6e2f8;font:inherit;font-weight:800;font-size:14px;white-space:nowrap}
+#app #parrBody .ptabs button.on{background:linear-gradient(135deg,#3d8bff,#1c5fe0);color:#fff;border-color:#9cc4ff}
+.ptabs-n{font-size:11px;color:#8fa3c7;white-space:nowrap;padding:0 4px}
+.ptab[hidden]{display:none!important}
+.ptab{display:flex;flex-direction:column;gap:6px;padding-top:4px}
+#app #parrBody .ptab .sec{margin-top:12px;padding-left:8px;border-left:4px solid #ffb21f;font-size:14px;color:#ffd24a}
+.pmsg{margin:8px 0 0;padding:10px 12px;border-radius:12px;background:rgba(255,210,74,.14);border:1px solid rgba(255,210,74,.45);color:#ffe28a;font-size:13px;font-weight:700}
+#app #parrBody .sticky{position:sticky;bottom:0;padding:12px 56px 10px 0;margin-top:10px;background:linear-gradient(0deg,#050914 70%,rgba(5,9,20,0))}
+/* 選手一覧 */
+.newrow{display:flex;gap:8px;margin-bottom:12px}
+.newrow button{flex:1;min-height:48px;border-radius:14px;font-weight:900;font-size:15px;color:#fff;background:linear-gradient(135deg,#3d8bff,#1c5fe0);border:1px solid #9cc4ff}
+.newrow button+button{background:linear-gradient(135deg,#9a5cf0,#6a35c2);border-color:#c9a8ff}
+.flt{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none}
+#app #parrBody .flt button{flex:1 0 auto;min-height:38px;padding:0 12px;border-radius:19px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.2);color:#cfdcf5;font:inherit;font-weight:700;font-size:13px;white-space:nowrap}
+#app #parrBody .flt button b{margin-left:5px;font-size:12px;opacity:.75}
+#app #parrBody .flt button.on{background:#ffd24a;color:#1c1300;border-color:#ffd24a}
+.pcard{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 12px;margin-bottom:8px;border-radius:16px;background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.18);color:#fff;font:inherit}
+.pc-o{flex:none;width:52px;height:52px;border-radius:14px;background:var(--gc,#556);display:grid;place-items:center;align-content:center;color:#fff;line-height:1}
+.pc-o b{font-size:22px;font-weight:900}.pc-o small{font-size:11px;font-weight:900;opacity:.9}
+.pc-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.pc-n{font-weight:900;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-n em{font-style:normal;margin-left:6px;padding:1px 7px;border-radius:8px;background:#ffd24a;color:#1c1300;font-size:11px;font-weight:900}
+.pc-t{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.ct{font-style:normal;font-size:11px;font-weight:900;padding:1px 7px;border-radius:7px;color:#fff;background:#2b6fc0}.ct.p{background:#8a4fd0}
+.pc-h{font-size:11px;color:#9fb2d6}
+.pc-s{display:flex;gap:10px;font-size:12px;color:#cfdcf5;font-weight:700;align-items:center}.pc-s small{font-size:10px;opacity:.7}
+.pc-w{flex:none;max-width:84px;font-size:11px;line-height:1.35;color:#9fe0b0;text-align:right;font-weight:700}.pc-w.no{color:#8a97b3;font-weight:500}
+/* アレンジチーム */
+#app #scr-arr .aprev{height:60px;padding:0 16px;margin:2px 0 12px;font-size:20px;overflow:hidden}
+#app #scr-arr .aprev span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;padding-bottom:8px}
+#app #scr-arr .fld{grid-template-columns:72px 1fr}
+#app #scr-arr .cols{gap:8px}
+#app #scr-arr .cols button{width:32px!important;height:32px!important;min-height:0!important;padding:0!important;border-radius:50%!important}
+#app #scr-arr .cnt{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.07);flex-wrap:wrap}
+#app #scr-arr .sec{margin-top:14px;padding-left:8px;border-left:4px solid #ffb21f;text-align:left}
+#app #scr-arr .pl{padding:9px 10px}
+#app #scr-arr .pl .pp{width:34px;height:34px;font-size:13px}
+#app #scr-arr .pl .pn{font-size:15px;font-weight:800}
+#app #scr-arr .pl .ad{width:38px;height:38px}
+#app #scr-arr .sticky{padding-right:56px}
+/* オーダー画面 */
+#app #scr-order .pw-r{padding:5px 7px;gap:6px 6px}
+#app #scr-order .pw-plate{font-size:16px;padding:5px 8px}
+#app #scr-order .pw-no{font-size:15px}
+#app #scr-order .pw-pos{font-size:13px;padding:4px 0}
+#app #scr-order .pw-bar{gap:5px;padding:2px 3px 3px}
+#app #scr-order .pw-bar span{font-size:12.5px}
+#app #scr-order .pw-bar b{font-size:16px;margin-right:3px}
+#app #scr-order .pw-r.sel{background:#fff1d6;border-color:#ff8a1f;box-shadow:0 0 0 3px rgba(255,138,31,.55)}
+#app #scr-order .pw-colhead{font-size:13px;padding:7px;position:sticky;top:0;z-index:2}
+#app #scr-order .pgrp{align-items:center;margin-bottom:6px}
+#app #scr-order .pgl{font-size:12px;font-weight:900;min-width:3.6em;color:#33466a}
+#app #scr-order .pcell{padding:6px 8px;min-width:76px}
+#app #scr-order .pcn{font-size:13.5px;font-weight:800}
+#app #scr-order .pcell small{font-size:11px}
+#app #scr-order .pw-hint2{font-size:12px;line-height:1.8}
+#app #scr-order .pw-act{position:sticky;bottom:0;padding:10px 56px 8px 0;background:linear-gradient(0deg,#050914 65%,rgba(5,9,20,0));z-index:3}
+@media(min-width:900px){#app #scr-order #ordBody .pw-wrap{max-width:1100px;margin:0 auto}#app #scr-order .pw-plate{font-size:17px}}
+#app .pvwWrap .pvwCap{bottom:auto;top:12px;left:12px;max-width:62%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+#app .pvwWrap .pvwBox{position:relative}
+#arrBody .src{width:100%;margin-bottom:8px;padding:10px;border-radius:var(--pw-r);background:var(--deep);color:var(--text);border:1px solid var(--line);font:inherit;font-size:16px}
+#app #parrBody .sticky .seg button,#app #scr-arr .sticky .seg button{min-height:46px}
+#app #scr-order .pw-act .btn{min-height:46px}
+#app #scr-parr #parrBody,#app #scr-arr #arrBody,#app #scr-order #ordBody{padding-bottom:0!important}
+#app #parrBody .sticky,#app #scr-arr .sticky,#app #scr-order .pw-act{padding-bottom:18px!important}
 </style>
 <!-- BBH42 v62: S0-2 年度別/通算成績UI・集計を実装 -->
 </head>
@@ -8907,7 +8981,7 @@ function renderArr(){
   const has=(t,n)=>A.players.some(p=>p.team===t&&p.n===n);
   const pinfo=(x,k)=>k==='b'?`${x.prim}　${gchip(x.meet)}${gchip(x.power)}${gchip(x.speed)}`:`${x.starter?'先':x.sv>=10?'抑':'中'}　${x.speed}km ${gchip(x.control)}`;
   const mine=A.players.map(e=>{const T=TEAM[e.team];if(!T)return null;const Q=poolOf(T),x=(e.type==='b'?Q.b:Q.p).find(q=>q.orig===e.n);return x?{e,x,T}:null}).filter(Boolean);
-  let h=`<div class="aprev" style="background:${A.c1};color:${ink(A.c1)};box-shadow:inset 0 -14px 0 ${A.c2}">${A.name}</div>
+  let h=`<div class="aprev" style="background:${A.c1};color:${ink(A.c1)};box-shadow:inset 0 -10px 0 ${A.c2}"><span>${A.name}</span></div>
     <div class="fld"><label>チーム名</label><input id="aName" maxlength="14" value="${A.name.replace(/"/g,'')}"></div>
     <div class="fld"><label>略称</label><input id="aShort" maxlength="6" value="${A.short.replace(/"/g,'')}"></div>
     <div class="fld"><label>メイン色</label><div class="cols">${ACOLS.map(c=>`<button data-c1="${c}" class="${A.c1===c?'on':''}" style="background:${c}" aria-label="${c}"></button>`).join('')}</div></div>
@@ -8918,19 +8992,21 @@ function renderArr(){
     <div class="sec">選手を追加</div>
     <select class="src" id="aSrc">${['NPB','MLB'].map(o=>`<optgroup label="${o}">${TEAMS.filter(t=>t.org===o).map(t=>`<option value="${t.id}" ${t.id===AUI.src?'selected':''}>${t.name}</option>`).join('')}</optgroup>`).join('')}<optgroup label="自作"><option value="cust" ${AUI.src==='cust'?'selected':''}>自作選手（選手アレンジ）</option></optgroup></select>
     <div class="seg" style="margin-bottom:8px"><button data-k="b" class="${AUI.kind==='b'?'on':''}">野手</button><button data-k="p" class="${AUI.kind==='p'?'on':''}">投手</button></div>
-    ${list.map(x=>{const inn=has(src.id,x.orig);return`<div class="pl${inn?' in':''}"><span class="pp">${AUI.kind==='b'?x.prim:x.starter?'先':'救'}</span><span class="pn">${x.name}<small>${pinfo(x,AUI.kind)}${x.line?'　'+x.line:''}</small></span>${inn?'':`<button class="ad" data-add="${x.orig}" aria-label="追加">＋</button>`}</div>`}).join('')}
+    <input id="aQ" class="src" placeholder="名前で探す（${list.length}人）" value="${(AUI.q||'').replace(/"/g,'')}">
+    ${list.filter(x=>!AUI.q||x.name.includes(AUI.q)).map(x=>{const inn=has(src.id,x.orig);return`<div class="pl${inn?' in':''}"><span class="pp">${AUI.kind==='b'?x.prim:x.starter?'先':'救'}</span><span class="pn">${x.name}<small>${pinfo(x,AUI.kind)}${x.line?'　'+x.line:''}</small></span>${inn?'':`<button class="ad" data-add="${x.orig}" aria-label="追加">＋</button>`}</div>`}).join('')}
     <div class="sticky"><div class="seg"><button id="aSave" class="${ok?'on':''}" ${ok?'':'disabled'} style="flex:2">${ok?'保存する':'野手9人・投手5人以上で保存できます'}</button>${A.isNew?'':'<button id="aOrd">オーダー</button><button id="aDel">削除</button>'}</div></div>`;
   el.innerHTML=h;
   const keep=()=>{A.name=$('#aName').value.trim()||'オリジナルズ';A.short=$('#aShort').value.trim()||A.name.slice(0,5)};
-  $('#aName').oninput=()=>{A.name=$('#aName').value;el.querySelector('.aprev').textContent=A.name||'　'};
+  $('#aName').oninput=()=>{A.name=$('#aName').value;el.querySelector('.aprev span').textContent=A.name||'　'};
   $('#aShort').oninput=()=>{A.short=$('#aShort').value};
   el.querySelectorAll('[data-c1]').forEach(b=>b.onclick=()=>{keep();A.c1=b.dataset.c1;renderArr()});
   el.querySelectorAll('[data-c2]').forEach(b=>b.onclick=()=>{keep();A.c2=b.dataset.c2;renderArr()});
   el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{keep();const [t,n]=b.dataset.rm.split('|');A.players=A.players.filter(p=>!(p.team===t&&p.n===n));const y=el.scrollTop;renderArr();el.scrollTop=y});
   el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{keep();const k=AUI.kind,n=A.players.filter(p=>p.type===k).length;if(n>=(k==='b'?20:15)){telopMsg(k==='b'?'野手は20人までです':'投手は15人までです');return}
     A.players.push({team:AUI.src,n:b.dataset.add,type:k});const y=el.scrollTop;renderArr();el.scrollTop=y});
-  $('#aSrc').onchange=()=>{keep();AUI.src=$('#aSrc').value;renderArr()};
-  el.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{keep();AUI.kind=b.dataset.k;renderArr()});
+  $('#aSrc').onchange=()=>{keep();AUI.src=$('#aSrc').value;AUI.q='';renderArr()};
+  $('#aQ').oninput=()=>{keep();AUI.q=$('#aQ').value;const p=$('#aQ').selectionStart,y=el.scrollTop;renderArr();const n=$('#aQ');n.focus();try{n.setSelectionRange(p,p)}catch(e){}el.scrollTop=y};
+  el.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{keep();AUI.kind=b.dataset.k;AUI.q='';renderArr()});
   $('#aSave').onclick=()=>{if(!ok)return;keep();delete A.isNew;
     A.st=Math.round(mine.reduce((s,{x,e})=>s+(e.type==='b'?(x.meet+x.power)/2:x.control*0.4+(x.speed-110)),0)/Math.max(1,mine.length));
     const i=ARR.findIndex(a=>a.id===A.id);if(i>=0)ARR[i]=A;else ARR.push(A);delete ORD[A.id];saveArr();AUI.cur=null;renderArr()};
@@ -9017,13 +9093,24 @@ function pvwLoop(){
 function renderParr(){
   const el=$('#parrBody');if(!el)return;
   if(!PLU.cur){$('#parrTitle').textContent='選手アレンジ';
-    el.innerHTML=`<p class="hint" style="text-align:left;margin:4px 0 12px">名前・能力・球種を自由に決めて、自分だけの選手を作れます。作った選手は「チームに入れる」で好きな球団の名簿に追加したり、誰かと入れ替えたりできます。アレンジチームの「自作選手」からも選べます。</p>
-      <div class="seg" style="margin-bottom:12px"><button id="pNewB" class="on">＋ 野手を作る</button><button id="pNewP" class="on">＋ 投手を作る</button></div>
-      ${CUST.length?CUST.map(c=>{const w=custWhere(c.id);const x=c.k==='b'?custBat(c):custPit(c);
-        return `<button class="pl" data-e="${c.id}" style="width:100%"><span class="pp">${c.k==='b'?c.pos:(c.roles&&c.roles.length?c.roles:[c.role]).map(r=>r==='先発'?'先':r==='抑え'?'抑':'中').join('')}</span><span class="pn">${c.name||'（名前なし）'}${c.twin&&CUSTM[c.twin]?' <em style="font-style:normal;color:#ffd24a;font-size:11px">⚔二刀流</em>':''}<small>${c.k==='b'?`${gchip(x.meet)}${gchip(x.power)}${gchip(x.speed)}`:`${x.speed}km ${gchip(x.control)}`}　${w.length?w.join('、'):'未配属'}</small></span></button>`}).join(''):'<p class="hint">まだ自作選手はいません。</p>'}`;
-    $('#pNewB').onclick=()=>{PLU.cur=custNew('b');PLU.isNew=true;PLU.msg='';renderParr();el.scrollTop=0};
-    $('#pNewP').onclick=()=>{PLU.cur=custNew('p');PLU.isNew=true;PLU.msg='';renderParr();el.scrollTop=0};
-    el.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{PLU.cur=JSON.parse(JSON.stringify(CUSTM[b.dataset.e]));PLU.isNew=false;PLU.msg='';renderParr();el.scrollTop=0});
+    const nB=CUST.filter(c=>c.k==='b').length,nP=CUST.length-nB,nT=CUST.filter(c=>c.twin&&CUSTM[c.twin]).length,nU=CUST.filter(c=>!custWhere(c.id).length).length;
+    const FL=[['all','全員',CUST.length],['b','野手',nB],['p','投手',nP],['tw','二刀流',nT],['un','未配属',nU]];
+    if(!PLU.f)PLU.f='all';const q=(PLU.q||'').trim();
+    const shown=CUST.filter(c=>(PLU.f==='all'||(PLU.f==='b'&&c.k==='b')||(PLU.f==='p'&&c.k==='p')||(PLU.f==='tw'&&c.twin&&CUSTM[c.twin])||(PLU.f==='un'&&!custWhere(c.id).length))&&(!q||(c.name||'').includes(q)));
+    const card=c=>{const w=custWhere(c.id),isB=c.k==='b',x=isB?custBat(c):custPit(c);let v=0;try{v=ovrOf(x,!isB)}catch(e){}
+      const tag=isB?`<i class="ct b">${c.pos}</i>`:(c.roles&&c.roles.length?c.roles:[c.role]).map(r=>`<i class="ct p">${r}</i>`).join('');
+      const st=isB?[['ミ',x.meet],['パ',x.power],['走',x.speed],['守',x.fielding||60]].map(([l,n])=>`<span>${l}${gchip(n)}</span>`).join(''):`<span>${x.speed}<small>km</small></span><span>制${gchip(x.control)}</span><span>球種${(c.pitches||[]).length+1}</span>`;
+      return `<button class="pcard" data-e="${c.id}"><span class="pc-o" style="--gc:${GCOL[grade(v)]}"><b>${v}</b><small>${grade(v)}</small></span><span class="pc-m"><span class="pc-n">${c.name||'（名前なし）'}${c.twin&&CUSTM[c.twin]?'<em>二刀流</em>':''}</span><span class="pc-t">${tag}<span class="pc-h">${isB?({R:'右打',L:'左打',S:'両打'}[c.bats||'R']):({R:'右投',L:'左投'}[c.throws||'R'])}</span></span><span class="pc-s">${st}</span></span><span class="pc-w ${w.length?'':'no'}">${w.length?w.join('<br>'):'未配属'}</span></button>`};
+    el.innerHTML=`<p class="hint" style="text-align:left;margin:2px 0 10px">名前・能力・球種を自由に決めて、自分だけの選手を作れます。タップで編集、「球団」タブでチームに入れられます。</p>
+      <div class="newrow"><button id="pNewB" class="on">＋ 野手を作る</button><button id="pNewP" class="on">＋ 投手を作る</button></div>
+      ${CUST.length?`<div class="flt">${FL.map(([k,l,n])=>`<button data-f="${k}" class="${PLU.f===k?'on':''}">${l}<b>${n}</b></button>`).join('')}</div>
+      ${CUST.length>6?`<input id="pQ" class="src" placeholder="名前で探す" value="${(PLU.q||'').replace(/"/g,'')}">`:''}
+      ${shown.length?shown.map(card).join(''):'<p class="hint">条件に合う選手がいません。</p>'}`:'<p class="hint">まだ自作選手はいません。上のボタンから作ってみましょう。</p>'}`;
+    el.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{PLU.f=b.dataset.f;renderParr()});
+    if($('#pQ'))$('#pQ').oninput=()=>{PLU.q=$('#pQ').value;const p=$('#pQ').selectionStart;renderParr();const n=$('#pQ');n.focus();try{n.setSelectionRange(p,p)}catch(e){}};
+    $('#pNewB').onclick=()=>{PLU.tab='';PLU.cur=custNew('b');PLU.isNew=true;PLU.msg='';renderParr();el.scrollTop=0};
+    $('#pNewP').onclick=()=>{PLU.tab='';PLU.cur=custNew('p');PLU.isNew=true;PLU.msg='';renderParr();el.scrollTop=0};
+    el.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{PLU.tab='';PLU.cur=JSON.parse(JSON.stringify(CUSTM[b.dataset.e]));PLU.isNew=false;PLU.msg='';renderParr();el.scrollTop=0});
     return}
   const C=PLU.cur,isB=C.k==='b';$('#parrTitle').textContent=PLU.isNew?(isB?'野手を作る':'投手を作る'):(C.name||'自作選手');
   const sl=(key,label,min,max)=>`<div class="fld" style="grid-template-columns:1fr"><label>${label}　<b id="v_${key}">${C[key]}</b> <span id="g_${key}">${key==='speed'&&!isB?'':gchip(C[key])}</span></label><input type="range" data-s="${key}" min="${min}" max="${max}" value="${C[key]}" style="width:100%;padding:0"></div>`;
@@ -9038,23 +9125,21 @@ function renderParr(){
   const tog=(a,v)=>{const i=a.indexOf(v);if(i>=0){if(a.length>1)a.splice(i,1)}else a.push(v);return a};
   const PRE=isB?[['強打者',{meet:62,power:88,speed:45,arm:62,fielding:52,catching:50,eye:62}],['巧打者',{meet:88,power:48,speed:66,arm:58,fielding:62,catching:58,eye:78}],['俊足',{meet:66,power:40,speed:92,arm:60,fielding:66,catching:58,eye:60}],['守備職人',{meet:52,power:42,speed:62,arm:76,fielding:90,catching:86,eye:55}],['バランス',{meet:68,power:68,speed:68,arm:68,fielding:68,catching:68,eye:68}]]
     :[['速球派',{speed:158,control:50}],['技巧派',{speed:138,control:86}],['エース',{speed:152,control:78}],['抑え',{speed:157,control:62}]];
-  let h=`<div class="pvwWrap"><div id="pvwBox" class="pvwBox"></div><div class="pvwCap" id="pvwCap"></div></div>
-    <div class="ovrRow"><span>総合力</span><b id="ovrV"></b><span id="ovrG"></span></div>
-    <div class="sec">能力のひな形（あとで自由に調整できます）</div>
+  let h=`@@T:基本@@<div class="sec">能力のひな形（あとで自由に調整できます）</div>
     <div class="seg" id="pPre" style="flex-wrap:wrap">${PRE.map(([n],i)=>`<button data-pre="${i}">${n}</button>`).join('')}</div>
     <div class="fld"><label>名前</label><input id="pName" maxlength="12" value="${(C.name||'').replace(/"/g,'')}" placeholder="例：山田 太郎"></div>
     <div class="fld"><label>背番号</label><input id="pNum" type="number" min="0" max="99" value="${C.num||''}" placeholder="空欄で自動"></div>
     <div class="fld"><label>${isB?'打席':'投'}</label><div class="seg" id="pHand">${(isB?[['R','右'],['L','左'],['S','両']]:[['R','右'],['L','左']]).map(([v,t])=>`<button data-h="${v}" class="${(isB?C.bats:C.throws)===v?'on':''}">${t}</button>`).join('')}</div></div>`;
   if(isB)h+=`<div class="fld"><label>本職（守備位置）</label><div class="seg" id="pPos" style="flex-wrap:wrap">${BPOS.map(p=>`<button data-p="${p}" class="${C.pos===p?'on':''}">${p}</button>`).join('')}</div></div>
-    <div class="sec">サブポジション（守れる位置と適性）</div>
+    @@T:守備@@<div class="sec">サブポジション（守れる位置と適性）</div>
     <p class="hint" style="text-align:left;margin:0 0 6px">適性7＝本職と同じ。低いほど、その位置で守ったときの守備力が下がります（1段階ごとに−4）。「自動」は位置の近さから標準の適性になります。オーダー編成の自動オーダーも、適性4以上の選手を優先して起用します。</p>
     <div class="subg">${BPOS.filter(p=>p!=='指'&&p!==C.pos).map(p=>`<label class="subr"><b>${p}</b><select data-sub="${p}" class="src" style="margin:0"><option value="">自動</option>${[0,1,2,3,4,5,6,7].map(n=>`<option value="${n}" ${C.sub[p]===n?'selected':''}>${n===0?'0 守れない':n===7?'7 本職並み':'適性'+n}</option>`).join('')}</select></label>`).join('')}</div>
-    <div class="fld"><label>構え（複数選べます）</label><div class="seg" id="pStance">${['標準','オープン','クラウチング'].map((t,i)=>`<button data-st="${i}" class="${C.stances.includes(i)?'on':''}">${t}</button>`).join('')}</div></div>${C.stances.length>1?'<p class="hint" style="text-align:left;margin:-4px 0 8px">複数選ぶと、試合では打席ごとにどれかの構えで立ちます。</p>':''}
+    @@T:打撃@@<div class="fld"><label>構え（複数選べます）</label><div class="seg" id="pStance">${['標準','オープン','クラウチング'].map((t,i)=>`<button data-st="${i}" class="${C.stances.includes(i)?'on':''}">${t}</button>`).join('')}</div></div>${C.stances.length>1?'<p class="hint" style="text-align:left;margin:-4px 0 8px">複数選ぶと、試合では打席ごとにどれかの構えで立ちます。</p>':''}
     <div class="sec">能力</div>${CAP_B.map(([k,l])=>sl(k,l,1,99)).join('')}`;
-  else h+=`<div class="fld"><label>適性のある役割（複数選べます）</label><div class="seg" id="pRole">${['先発','中継ぎ','抑え'].map(t=>`<button data-r="${t}" class="${C.roles.includes(t)?'on':''}">${t}${C.roles[0]===t&&C.roles.length>1?'◎':''}</button>`).join('')}</div></div>${C.roles.length>1?'<p class="hint" style="text-align:left;margin:-4px 0 8px">◎が最初の配置（最初に選んだ役割）。オーダー画面でほかの役割にも回せます。先発の適性があるとスタミナは先発並みに使えます。</p>':''}
+  else h+=`@@T:役割・フォーム@@<div class="fld"><label>適性のある役割（複数選べます）</label><div class="seg" id="pRole">${['先発','中継ぎ','抑え'].map(t=>`<button data-r="${t}" class="${C.roles.includes(t)?'on':''}">${t}${C.roles[0]===t&&C.roles.length>1?'◎':''}</button>`).join('')}</div></div>${C.roles.length>1?'<p class="hint" style="text-align:left;margin:-4px 0 8px">◎が最初の配置（最初に選んだ役割）。オーダー画面でほかの役割にも回せます。先発の適性があるとスタミナは先発並みに使えます。</p>':''}
     <div class="fld"><label>投球フォーム（腕の角度・複数可：投球ごとに使い分け）</label><div class="seg" id="pForm">${FORM_NAME.map((t,i)=>`<button data-f="${i}" class="${C.forms.includes(i)?'on':''}">${t}</button>`).join('')}</div></div>
     <div class="fld"><label>足の上げ方（両方選ぶと走者なし＝大きく／走者あり＝コンパクト）</label><div class="seg" id="pVar">${['大きく足を上げる','コンパクト'].map((t,i)=>`<button data-v="${i}" class="${C.variants.includes(i)?'on':''}">${t}</button>`).join('')}</div></div>
-    <div class="sec">能力</div>${CAP_P.map(([k,l,a,b])=>sl(k,l,a,b)).join('')}
+    @@T:能力・球種@@<div class="sec">能力</div>${CAP_P.map(([k,l,a,b])=>sl(k,l,a,b)).join('')}
     <div class="sec">球種（ストレートのほかに好きなだけ・変化量Lv1〜7）　<b>${C.pitches.length}</b>／${PT.length}種</div>
     ${C.pitches.map((q,i)=>`<div class="fld" style="grid-template-columns:1fr 84px 44px"><select data-pt="${i}" class="src" style="margin:0">${PT.map(k=>`<option value="${k}" ${q.t===k?'selected':''} ${C.pitches.some((z,j)=>j!==i&&z.t===k)?'disabled':''}>${PITCH[k].n}</option>`).join('')}</select><select data-pl="${i}" class="src" style="margin:0">${[1,2,3,4,5,6,7].map(n=>`<option value="${n}" ${q.lv===n?'selected':''}>Lv${n}</option>`).join('')}</select><button class="btn" data-pdel="${i}" style="margin:0;padding:6px 0" aria-label="この球種を外す">✕</button></div>`).join('')}
     ${C.pitches.length<PT.length?`<button class="btn" id="pAddPt" style="width:100%;margin:4px 0 8px">＋ 球種を追加</button>`:''}
@@ -9067,14 +9152,18 @@ function renderParr(){
     <button class="btn" id="cpGo" style="width:100%;margin-bottom:10px">この選手の能力を読み込む</button>`;
   const ex=PLU.cur&&!PLU.isNew;
   if(ex){const as=PLU.as;let aT=as.team.startsWith('arr:')?null:(TEAM[as.team]||TEAM.t),aList=aT?(isB?poolOf(aT).b:poolOf(aT).p).filter(x=>x.orig!=='CUST:'+C.id):[];
-    h+=twinHTML()+`<div class="sec">チームに入れる</div>
+    h+=`@@T:球団@@`+twinHTML()+`<div class="sec">チームに入れる</div>
     <select class="src" id="asTeam">${teamOpts(as.team,true)}</select>
     ${aT?`<select class="src" id="asRep"><option value="">誰とも入れ替えず、名簿に追加する</option>${aList.map(x=>`<option value="${x.orig}" ${x.orig===as.rep?'selected':''}>${x.name}　と入れ替える</option>`).join('')}</select>`:'<p class="hint" style="margin:0 0 8px">アレンジチームの名簿に追加します。</p>'}
     <button class="btn primary" id="asGo" style="width:100%;margin-bottom:6px">この球団に入れる</button>
     ${custWhere(C.id).length?`<p class="hint" style="margin:6px 0">現在の所属：${custWhere(C.id).join('、')}</p><button class="btn" id="asOut" style="width:100%">すべての球団から外す</button>`:''}`}
-  if(PLU.msg)h+=`<p class="hint" style="color:#ffd24a;margin:8px 0">${PLU.msg}</p>`;
+  {const ps=h.split('@@T:').slice(1),nm=[];if(!PLU.tab||!ps.some(p=>p.startsWith(PLU.tab+'@@')))PLU.tab=ps[0].split('@@')[0];
+   let b='';ps.forEach(p=>{const i=p.indexOf('@@'),n=p.slice(0,i);nm.push(n);b+=`<div class="ptab" data-t="${n}" ${n===PLU.tab?'':'hidden'}>${p.slice(i+2)}</div>`});
+   h=`<div class="pvwWrap"><div id="pvwBox" class="pvwBox"></div><div class="pvwCap" id="pvwCap"></div><div class="ovrRow"><span>総合力</span><b id="ovrV"></b><span id="ovrG"></span></div><div class="ptabs">${nm.map(n=>`<button data-tab="${n}" class="${n===PLU.tab?'on':''}">${n}</button>`).join('')}${ex?'':'<span class="ptabs-n">球団への登録は保存後</span>'}</div></div>`+b}
+  if(PLU.msg)h+=`<div class="pmsg">${PLU.msg}</div>`;
   h+=`<div class="sticky"><div class="seg"><button id="pSave" class="on" style="flex:2">${PLU.isNew?'作成して保存':'保存する'}</button>${PLU.isNew?'':'<button id="pDup">複製</button><button id="pDel">削除</button>'}<button id="pCancel">戻る</button></div></div>`;
   el.innerHTML=h;
+  el.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{PLU.tab=b.dataset.tab;el.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('on',x===b));el.querySelectorAll('.ptab').forEach(x=>{x.hidden=x.dataset.t!==PLU.tab})});
   const grd=v=>`<span class="g" style="background:${GCOL[grade(v)]}">${grade(v)}</span>`;
   $('#pName').oninput=()=>{C.name=$('#pName').value.replace(/[|\n]/g,'')};
   $('#pNum').oninput=()=>{C.num=Math.max(0,Math.min(99,+$('#pNum').value||0))};
