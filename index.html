@@ -1945,10 +1945,11 @@ function loadCust(){try{CUST=JSON.parse(localStorage.getItem('bbh42_cust')||'[]'
 function saveCust(){try{localStorage.setItem('bbh42_cust',JSON.stringify(CUST));localStorage.setItem('bbh42_custas',JSON.stringify(CUST_AS))}catch(e){}CUSTM=Object.fromEntries(CUST.map(c=>[c.id,c]))}
 loadCust();
 const cuCl=(v,a,b)=>Math.max(a,Math.min(b,Math.round(+v||0)));
-function custBat(C){return{name:C.name,orig:'CUST:'+C.id,pos:C.pos,prim:C.pos,bats:C.bats,meet:cuCl(C.meet,1,99),power:cuCl(C.power,1,99),speed:cuCl(C.speed,1,99),arm:cuCl(C.arm,1,99),fielding:cuCl(C.fielding,1,99),catching:cuCl(C.catching,1,99),eye:cuCl(C.eye,1,99),pa:540,num:C.num>0?C.num:(hsh(C.id)%99+1),stance:C.stance||0,sub:C.sub||{},line:'自作選手',cust:1}}
-function custPit(C){const sp=C.role==='先発',sp0=cuCl(C.speed,100,175),ct=cuCl(C.control,1,99);
-  return{name:C.name,orig:'CUST:'+C.id,role:C.role,throws:C.throws,speed:sp0,control:ct,stamina:sp?cuCl(C.stamina,60,130):Math.min(cuCl(C.stamina,15,60),45),num:C.num>0?C.num:(hsh(C.id)%99+1),form:C.form||0,qv:C.variant,
-    q:Math.max(-2,Math.min(4,(ct-55)/12+(sp0-148)/8)),sv:C.role==='抑え'?30:0,hld:0,ip:sp?150:55,starter:sp,line:'自作選手',cust:1,
+function custBat(C){return{name:C.name,orig:'CUST:'+C.id,pos:C.pos,prim:C.pos,bats:C.bats,meet:cuCl(C.meet,1,99),power:cuCl(C.power,1,99),speed:cuCl(C.speed,1,99),arm:cuCl(C.arm,1,99),fielding:cuCl(C.fielding,1,99),catching:cuCl(C.catching,1,99),eye:cuCl(C.eye,1,99),pa:540,num:C.num>0?C.num:(hsh(C.id)%99+1),stance:(C.stances&&C.stances.length?C.stances[0]:C.stance)||0,stances:C.stances&&C.stances.length>1?C.stances.slice():null,sub:C.sub||{},tw:!!(C.twin&&CUSTM[C.twin]),line:C.twin&&CUSTM[C.twin]?'自作選手（二刀流）':'自作選手',cust:1}}
+function custPit(C){const rs=(C.roles&&C.roles.length?C.roles:[C.role||'先発']),role=rs[0],sp=rs.includes('先発'),sp0=cuCl(C.speed,100,175),ct=cuCl(C.control,1,99);
+  const fs=C.forms&&C.forms.length?C.forms:[C.form||0],vs=C.variants&&C.variants.length?C.variants:[C.variant||0];
+  return{name:C.name,orig:'CUST:'+C.id,role,roles:rs.slice(),throws:C.throws,speed:sp0,control:ct,stamina:sp?cuCl(C.stamina,60,130):Math.min(cuCl(C.stamina,15,60),45),num:C.num>0?C.num:(hsh(C.id)%99+1),form:fs[0],forms:fs.length>1?fs.slice():null,qv:vs[0],qvs:vs.length>1?vs.slice():null,
+    q:Math.max(-2,Math.min(4,(ct-55)/12+(sp0-148)/8)),sv:rs.includes('抑え')?30:0,hld:0,ip:role==='先発'?150:55,starter:role==='先発',tw:!!(C.twin&&CUSTM[C.twin]),line:C.twin&&CUSTM[C.twin]?'自作選手（二刀流）':'自作選手',cust:1,
     pitches:[{t:'st',lv:0},...(C.pitches||[]).filter(q=>q&&PITCH[q.t]&&q.t!=='st').map(q=>({t:q.t,lv:cuCl(q.lv,1,7)}))]}}
 function custLines(T,d){let bl=d.b.split('\n'),pl=d.p.split('\n');
   for(const a of CUST_AS){const C=CUSTM[a.id];if(a.team!==T.id||!C)continue;
@@ -6526,6 +6527,8 @@ function fpos(P,i,t){
 function basePath(from,s){let b=from,rem=s;while(rem>BL&&b<4){rem-=BL;b++}if(b>=4)return[0,0];const A=BASEP[b%4],B=BASEP[(b+1)%4],f=Math.min(1,rem/BL);return[A[0]+(B[0]-A[0])*f,A[1]+(B[1]-A[1])*f]}
 function runnerS(r,t){if(r.to===r.from)return 0;const L=(r.to-r.from)*BL;return Math.min(r.lead+accelS(t-r.t0,r.v),L)}
 
+/* 構えを複数選んだ自作選手は、打席ごとにどれかを使う */
+function stanceOf(b){const a=b&&b.stances;if(a&&a.length>1&&G)return a[hashStr((b.orig||b.name)+'|'+G.inn+'|'+G.outs+'|'+G.ord[G.half])%a.length];return(b&&b.stance)||0}
 function batterAnim(BAT,t){
   let pre=0;
   if(U.phase==='windup'){const k=t-U.wind;pre=clamp((k-0.55)/0.45,0,1)}
@@ -6539,7 +6542,7 @@ function batterAnim(BAT,t){
   if(sw!=null&&U.pitch&&U.pitch.p0&&!(userBat()&&U.mode==='bunt')){const p=U.pitch,q=pitchPos(p,p.T);_tg.set(q.x,q.y,Math.max(0,q.z)+0.03);
     if(U.swingMiss||window.MISSOVR){const sg=userBat()?(U.cursor.y>=q.y?1:-1):((p.seed||1)%2<1?1:-1);_tg.y+=0.24*sg}
     W.localToWorld(_tg);BAT.updateWorldMatrix(true,false);BAT.worldToLocal(_tg);if(Lh)_tg.x*=-1;tgt=_tg}
-  const P=poseBatterP(BAT.userData.P,pre,sw,cy,t,{stance:b.stance||0,miss:!!U.swingMiss||window.MISSOVR,bunt:userBat()&&U.mode==='bunt',cx:cx*(Lh?-1:1),take,tgt});
+  const P=poseBatterP(BAT.userData.P,pre,sw,cy,t,{stance:stanceOf(b),miss:!!U.swingMiss||window.MISSOVR,bunt:userBat()&&U.mode==='bunt',cx:cx*(Lh?-1:1),take,tgt});
   if(BAT.userData.Lh){mirrorPose(P);P.bat.x*=-1}
   applyPose(BAT,P);
 }
@@ -6706,7 +6709,9 @@ function animate(t,dt){_FDT=dt;_FRAME++;
       if(pitching&&t>U.rel-0.1){pose(f,'ready')}else{pose(f,'stand');f.userData.body.rotation.y=0}});
     const pf=F[0];place(pf,0,18.44,0,0);
     const k=window.KOVR!=null?window.KOVR:(U.pitch&&(U.phase==='windup'||U.phase==='flight'||(U.phase==='wait'&&t-U.wind<2.6)))?Math.min(1.6,t-U.wind):0;{const pu=pf.userData;if(pu.lastK!=null&&k<pu.lastK-0.2){pu.pFrom=pu.pFrom||newPose();copyPose(pu.pFrom,pu.P);pu.pT=0}pu.lastK=k;
-     posePitcher(pu.P,k,Lp,pit.form||0,false,pitcherQuirk(pit));
+     {if(!(pit.forms&&pit.forms.length>1))pu.fN=pit.form||0;else if(pu.fN==null||k<0.03||!pit.forms.includes(pu.fN))pu.fN=pit.forms[Math.floor(Math.random()*pit.forms.length)]
+        let q0=pitcherQuirk(pit);if(pit.qvs&&pit.qvs.length>1)q0=Object.assign({},q0,{variant:(G&&G.bases&&G.bases.some(Boolean))?(pit.qvs.includes(1)?1:0):(pit.qvs.includes(0)?0:1)});   // 走者がいる時はコンパクト、いない時は大きな足上げ
+        posePitcher(pu.P,k,Lp,pu.fN,false,q0)};
      // 投げ終わり→次の投球の構えへは0.45秒かけて戻る（プレートへの瞬間移動をなくす）
      if(pu.pFrom&&pu.pT<1){pu.pT=Math.min(1,pu.pT+dt/0.45);const e=pu.pT*pu.pT*(3-2*pu.pT);lerpPose(pu.P,pu.pFrom,pu.P,e)}
      applyPose(pf,pu.P)}
@@ -8975,12 +8980,13 @@ function pvwBuild(){
 }
 function pvwMount(host,C){
   if(!host||!pvwEnsure()){if(host)host.innerHTML='<p class="hint">この端末ではプレビューを表示できません</p>';return}
-  const key=[C.k,C.id,C.k==='b'?[C.stance||0,C.bats]:[C.form||0,C.throws,C.variant||0]].join('|');
+  const key=[C.k,C.id,C.k==='b'?[(C.stances||[]).join(),C.bats,PVW.pick]:[(C.forms||[]).join(),C.throws,(C.variants||[]).join(),PVW.pickF,PVW.pickV]].join('|');
   const rebuild=PVW.C&&(PVW.C.id!==C.id||PVW.C.k!==C.k||(C.k==='b'?PVW.C.bats!==C.bats:PVW.C.throws!==C.throws));
+  if(PVW.C&&PVW.C.id!==C.id){PVW.pick=PVW.pickF=PVW.pickV=null}
   PVW.C=C;PVW.host=host;host.appendChild(PVW.el);
   if(!PVW.fig||rebuild||PVW.kindKey!==C.k+C.id+(C.k==='b'?C.bats:C.throws)){PVW.kindKey=C.k+C.id+(C.k==='b'?C.bats:C.throws);pvwBuild()}
   if(PVW.key!==key){PVW.key=key;PVW.t0=performance.now()/1000}          // 選び直したら最初から再生
-  const cap=$('#pvwCap');if(cap)cap.textContent=C.k==='b'?`構え：${['標準','オープン','クラウチング'][C.stance||0]}（選ぶと再生）`:`フォーム：${FORM_NAME[C.form||0]}／${(C.variant||0)?'コンパクト':'大きな足上げ'}（選ぶと再生）`;
+  const cap=$('#pvwCap');if(cap)cap.textContent=C.k==='b'?`構え：${(C.stances||[0]).map(i=>['標準','オープン','クラウチング'][i]).join('・')}（選ぶと再生）`:`フォーム：${(C.forms||[0]).map(i=>FORM_NAME[i]).join('・')}／${(C.variants||[0]).map(i=>i?'コンパクト':'大きな足上げ').join('・')}（選ぶと再生）`;
   host.onclick=()=>{PVW.t0=performance.now()/1000};
   if(!PVW.raf)PVW.raf=requestAnimationFrame(pvwLoop);
 }
@@ -8991,17 +8997,18 @@ function pvwLoop(){
   const w=PVW.host.clientWidth,h=PVW.host.clientHeight;if(w&&h&&(w!==PVW.w||h!==PVW.h)){PVW.w=w;PVW.h=h;PVW.r.setSize(w,h,false);PVW.cam.aspect=w/h;PVW.cam.updateProjectionMatrix()}
   try{
     const f=PVW.fig,P=f.userData.P;_FDT=1/60;_FRAME++;
+    const pk=PVW.pick;                                                // 最後に押した選択肢を再生（複数選択でも押した構え・フォームが見える）
     if(C.k==='b'){
       let pre=0,sw=null;const L=!!f.userData.Lh;
       if(tt<1.1)pre=0;else if(tt<1.7)pre=2*(tt-1.1)/0.6;else{pre=2;sw=tt-1.7}
       if(sw!=null&&sw>0.5)sw=0.5;
-      poseBatterP(P,pre,sw,0.8,now_,{stance:C.stance||0,miss:false,cx:0,take:0});
+      poseBatterP(P,pre,sw,0.8,now_,{stance:(pk!=null&&(C.stances||[]).includes(pk))?pk:(C.stances&&C.stances[0])||0,miss:false,cx:0,take:0});
       if(L){mirrorPose(P);P.bat.x*=-1}
       applyPose(f,P);
     }else{
       const k=tt<0.5?0:Math.min(1.6,(tt-0.5)/1.0);
-      const pit=custPit(C);_PQ.delete(String(pit.orig));
-      posePitcher(P,k,C.throws==='L',C.form||0,false,pitcherQuirk(pit));applyPose(f,P);
+      const pit=custPit(C);_PQ.delete(String(pit.orig));const pq=pitcherQuirk(pit);if(PVW.pickV!=null&&(C.variants||[]).includes(PVW.pickV))pq.variant=PVW.pickV;
+      posePitcher(P,k,C.throws==='L',(PVW.pickF!=null&&(C.forms||[]).includes(PVW.pickF))?PVW.pickF:(C.forms&&C.forms[0])||0,false,pq);applyPose(f,P);
     }
     PVW.r.render(PVW.sc,PVW.cam);
   }catch(e){console.warn('pvw',e)}
@@ -9013,7 +9020,7 @@ function renderParr(){
     el.innerHTML=`<p class="hint" style="text-align:left;margin:4px 0 12px">名前・能力・球種を自由に決めて、自分だけの選手を作れます。作った選手は「チームに入れる」で好きな球団の名簿に追加したり、誰かと入れ替えたりできます。アレンジチームの「自作選手」からも選べます。</p>
       <div class="seg" style="margin-bottom:12px"><button id="pNewB" class="on">＋ 野手を作る</button><button id="pNewP" class="on">＋ 投手を作る</button></div>
       ${CUST.length?CUST.map(c=>{const w=custWhere(c.id);const x=c.k==='b'?custBat(c):custPit(c);
-        return `<button class="pl" data-e="${c.id}" style="width:100%"><span class="pp">${c.k==='b'?c.pos:c.role==='先発'?'先':c.role==='抑え'?'抑':'中'}</span><span class="pn">${c.name||'（名前なし）'}<small>${c.k==='b'?`${gchip(x.meet)}${gchip(x.power)}${gchip(x.speed)}`:`${x.speed}km ${gchip(x.control)}`}　${w.length?w.join('、'):'未配属'}</small></span></button>`}).join(''):'<p class="hint">まだ自作選手はいません。</p>'}`;
+        return `<button class="pl" data-e="${c.id}" style="width:100%"><span class="pp">${c.k==='b'?c.pos:(c.roles&&c.roles.length?c.roles:[c.role]).map(r=>r==='先発'?'先':r==='抑え'?'抑':'中').join('')}</span><span class="pn">${c.name||'（名前なし）'}${c.twin&&CUSTM[c.twin]?' <em style="font-style:normal;color:#ffd24a;font-size:11px">⚔二刀流</em>':''}<small>${c.k==='b'?`${gchip(x.meet)}${gchip(x.power)}${gchip(x.speed)}`:`${x.speed}km ${gchip(x.control)}`}　${w.length?w.join('、'):'未配属'}</small></span></button>`}).join(''):'<p class="hint">まだ自作選手はいません。</p>'}`;
     $('#pNewB').onclick=()=>{PLU.cur=custNew('b');PLU.isNew=true;PLU.msg='';renderParr();el.scrollTop=0};
     $('#pNewP').onclick=()=>{PLU.cur=custNew('p');PLU.isNew=true;PLU.msg='';renderParr();el.scrollTop=0};
     el.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{PLU.cur=JSON.parse(JSON.stringify(CUSTM[b.dataset.e]));PLU.isNew=false;PLU.msg='';renderParr();el.scrollTop=0});
@@ -9023,6 +9030,12 @@ function renderParr(){
   const teamOpts=(sel,withArr)=>['NPB','MLB'].map(o=>`<optgroup label="${o}">${TEAMS.filter(t=>t.org===o).map(t=>`<option value="${t.id}" ${t.id===sel?'selected':''}>${t.name}</option>`).join('')}</optgroup>`).join('')+(withArr&&ARR.length?`<optgroup label="アレンジチーム">${ARR.map(a=>`<option value="arr:${a.id}" ${'arr:'+a.id===sel?'selected':''}>${a.name}</option>`).join('')}</optgroup>`:'');
   const PT=Object.keys(PITCH).filter(k=>k!=='st');
   if(!C.pitches)C.pitches=[];if(!C.sub)C.sub={};
+  if(isB){if(!C.stances||!C.stances.length)C.stances=[C.stance||0]}else{if(!C.roles||!C.roles.length)C.roles=[C.role||'先発'];if(!C.forms||!C.forms.length)C.forms=[C.form||0];if(!C.variants||!C.variants.length)C.variants=[C.variant||0]}
+  const twinHTML=()=>{const tw=C.twin&&CUSTM[C.twin],cands=CUST.filter(c=>c.k!==C.k&&!c.twin&&c.id!==C.id);
+    return `<div class="sec">二刀流登録（投手と野手を1人の選手に合体）</div>`+(tw?`<p class="hint" style="text-align:left;margin:0 0 6px">「${tw.name||'（名前なし）'}」（${isB?'投手':'野手'}）と合体中です。チームに入れると、野手としても投手としても同時に登録されます。名前と背番号は2人で共通です。</p><button class="btn" id="twOff" style="width:100%;margin-bottom:10px">合体を解除する</button>`
+      :cands.length?`<p class="hint" style="text-align:left;margin:0 0 6px">${isB?'投手':'野手'}の自作選手と合体して、1人の二刀流選手にします。相手の名前・背番号はこの選手に合わせます。</p><select class="src" id="twSel">${cands.map(c=>`<option value="${c.id}">${c.name||'（名前なし）'}　${c.k==='b'?c.pos:'投手'}</option>`).join('')}</select><button class="btn" id="twGo" style="width:100%;margin-bottom:10px">二刀流にする</button>`
+      :`<p class="hint" style="text-align:left;margin:0 0 10px">合体できる${isB?'投手':'野手'}がいません。先に${isB?'投手':'野手'}を作ってください。</p>`)};
+  const tog=(a,v)=>{const i=a.indexOf(v);if(i>=0){if(a.length>1)a.splice(i,1)}else a.push(v);return a};
   const PRE=isB?[['強打者',{meet:62,power:88,speed:45,arm:62,fielding:52,catching:50,eye:62}],['巧打者',{meet:88,power:48,speed:66,arm:58,fielding:62,catching:58,eye:78}],['俊足',{meet:66,power:40,speed:92,arm:60,fielding:66,catching:58,eye:60}],['守備職人',{meet:52,power:42,speed:62,arm:76,fielding:90,catching:86,eye:55}],['バランス',{meet:68,power:68,speed:68,arm:68,fielding:68,catching:68,eye:68}]]
     :[['速球派',{speed:158,control:50}],['技巧派',{speed:138,control:86}],['エース',{speed:152,control:78}],['抑え',{speed:157,control:62}]];
   let h=`<div class="pvwWrap"><div id="pvwBox" class="pvwBox"></div><div class="pvwCap" id="pvwCap"></div></div>
@@ -9036,11 +9049,11 @@ function renderParr(){
     <div class="sec">サブポジション（守れる位置と適性）</div>
     <p class="hint" style="text-align:left;margin:0 0 6px">適性7＝本職と同じ。低いほど、その位置で守ったときの守備力が下がります（1段階ごとに−4）。「自動」は位置の近さから標準の適性になります。オーダー編成の自動オーダーも、適性4以上の選手を優先して起用します。</p>
     <div class="subg">${BPOS.filter(p=>p!=='指'&&p!==C.pos).map(p=>`<label class="subr"><b>${p}</b><select data-sub="${p}" class="src" style="margin:0"><option value="">自動</option>${[0,1,2,3,4,5,6,7].map(n=>`<option value="${n}" ${C.sub[p]===n?'selected':''}>${n===0?'0 守れない':n===7?'7 本職並み':'適性'+n}</option>`).join('')}</select></label>`).join('')}</div>
-    <div class="fld"><label>構え</label><div class="seg" id="pStance">${['標準','オープン','クラウチング'].map((t,i)=>`<button data-st="${i}" class="${(C.stance||0)===i?'on':''}">${t}</button>`).join('')}</div></div>
+    <div class="fld"><label>構え（複数選べます）</label><div class="seg" id="pStance">${['標準','オープン','クラウチング'].map((t,i)=>`<button data-st="${i}" class="${C.stances.includes(i)?'on':''}">${t}</button>`).join('')}</div></div>${C.stances.length>1?'<p class="hint" style="text-align:left;margin:-4px 0 8px">複数選ぶと、試合では打席ごとにどれかの構えで立ちます。</p>':''}
     <div class="sec">能力</div>${CAP_B.map(([k,l])=>sl(k,l,1,99)).join('')}`;
-  else h+=`<div class="fld"><label>役割</label><div class="seg" id="pRole">${['先発','中継ぎ','抑え'].map(t=>`<button data-r="${t}" class="${C.role===t?'on':''}">${t}</button>`).join('')}</div></div>
-    <div class="fld"><label>投球フォーム（腕の角度）</label><div class="seg" id="pForm">${FORM_NAME.map((t,i)=>`<button data-f="${i}" class="${(C.form||0)===i?'on':''}">${t}</button>`).join('')}</div></div>
-    <div class="fld"><label>足の上げ方</label><div class="seg" id="pVar">${['大きく足を上げる','コンパクト'].map((t,i)=>`<button data-v="${i}" class="${(C.variant||0)===i?'on':''}">${t}</button>`).join('')}</div></div>
+  else h+=`<div class="fld"><label>適性のある役割（複数選べます）</label><div class="seg" id="pRole">${['先発','中継ぎ','抑え'].map(t=>`<button data-r="${t}" class="${C.roles.includes(t)?'on':''}">${t}${C.roles[0]===t&&C.roles.length>1?'◎':''}</button>`).join('')}</div></div>${C.roles.length>1?'<p class="hint" style="text-align:left;margin:-4px 0 8px">◎が最初の配置（最初に選んだ役割）。オーダー画面でほかの役割にも回せます。先発の適性があるとスタミナは先発並みに使えます。</p>':''}
+    <div class="fld"><label>投球フォーム（腕の角度・複数可：投球ごとに使い分け）</label><div class="seg" id="pForm">${FORM_NAME.map((t,i)=>`<button data-f="${i}" class="${C.forms.includes(i)?'on':''}">${t}</button>`).join('')}</div></div>
+    <div class="fld"><label>足の上げ方（両方選ぶと走者なし＝大きく／走者あり＝コンパクト）</label><div class="seg" id="pVar">${['大きく足を上げる','コンパクト'].map((t,i)=>`<button data-v="${i}" class="${C.variants.includes(i)?'on':''}">${t}</button>`).join('')}</div></div>
     <div class="sec">能力</div>${CAP_P.map(([k,l,a,b])=>sl(k,l,a,b)).join('')}
     <div class="sec">球種（ストレートのほかに好きなだけ・変化量Lv1〜7）　<b>${C.pitches.length}</b>／${PT.length}種</div>
     ${C.pitches.map((q,i)=>`<div class="fld" style="grid-template-columns:1fr 84px 44px"><select data-pt="${i}" class="src" style="margin:0">${PT.map(k=>`<option value="${k}" ${q.t===k?'selected':''} ${C.pitches.some((z,j)=>j!==i&&z.t===k)?'disabled':''}>${PITCH[k].n}</option>`).join('')}</select><select data-pl="${i}" class="src" style="margin:0">${[1,2,3,4,5,6,7].map(n=>`<option value="${n}" ${q.lv===n?'selected':''}>Lv${n}</option>`).join('')}</select><button class="btn" data-pdel="${i}" style="margin:0;padding:6px 0" aria-label="この球種を外す">✕</button></div>`).join('')}
@@ -9054,7 +9067,7 @@ function renderParr(){
     <button class="btn" id="cpGo" style="width:100%;margin-bottom:10px">この選手の能力を読み込む</button>`;
   const ex=PLU.cur&&!PLU.isNew;
   if(ex){const as=PLU.as;let aT=as.team.startsWith('arr:')?null:(TEAM[as.team]||TEAM.t),aList=aT?(isB?poolOf(aT).b:poolOf(aT).p).filter(x=>x.orig!=='CUST:'+C.id):[];
-    h+=`<div class="sec">チームに入れる</div>
+    h+=twinHTML()+`<div class="sec">チームに入れる</div>
     <select class="src" id="asTeam">${teamOpts(as.team,true)}</select>
     ${aT?`<select class="src" id="asRep"><option value="">誰とも入れ替えず、名簿に追加する</option>${aList.map(x=>`<option value="${x.orig}" ${x.orig===as.rep?'selected':''}>${x.name}　と入れ替える</option>`).join('')}</select>`:'<p class="hint" style="margin:0 0 8px">アレンジチームの名簿に追加します。</p>'}
     <button class="btn primary" id="asGo" style="width:100%;margin-bottom:6px">この球団に入れる</button>
@@ -9068,16 +9081,16 @@ function renderParr(){
   el.querySelectorAll('input[data-s]').forEach(i=>i.oninput=()=>{const k=i.dataset.s;C[k]=+i.value;$('#v_'+k).textContent=i.value;if(!(k==='speed'&&!isB))$('#g_'+k).innerHTML=grd(+i.value)});
   el.querySelectorAll('#pHand [data-h]').forEach(b=>b.onclick=()=>{if(isB)C.bats=b.dataset.h;else C.throws=b.dataset.h;renderParr()});
   el.querySelectorAll('#pPos [data-p]').forEach(b=>b.onclick=()=>{C.pos=b.dataset.p;renderParr()});
-  el.querySelectorAll('#pStance [data-st]').forEach(b=>b.onclick=()=>{C.stance=+b.dataset.st;renderParr()});
-  el.querySelectorAll('#pRole [data-r]').forEach(b=>b.onclick=()=>{C.role=b.dataset.r;if(C.role!=='先発'&&C.stamina>45)C.stamina=30;if(C.role==='先発'&&C.stamina<80)C.stamina=100;renderParr()});
-  el.querySelectorAll('#pForm [data-f]').forEach(b=>b.onclick=()=>{C.form=+b.dataset.f;renderParr()});
+  el.querySelectorAll('#pStance [data-st]').forEach(b=>b.onclick=()=>{tog(C.stances,+b.dataset.st);C.stance=C.stances[0];PVW.pick=+b.dataset.st;renderParr()});
+  el.querySelectorAll('#pRole [data-r]').forEach(b=>b.onclick=()=>{tog(C.roles,b.dataset.r);C.role=C.roles[0];if(!C.roles.includes('先発')&&C.stamina>45)C.stamina=30;if(C.roles.includes('先発')&&C.stamina<80)C.stamina=100;renderParr()});
+  el.querySelectorAll('#pForm [data-f]').forEach(b=>b.onclick=()=>{tog(C.forms,+b.dataset.f);C.form=C.forms[0];PVW.pickF=+b.dataset.f;renderParr()});
   el.querySelectorAll('[data-pt]').forEach(x=>x.onchange=()=>{C.pitches[+x.dataset.pt].t=x.value;renderParr()});
   el.querySelectorAll('[data-pl]').forEach(x=>x.onchange=()=>{C.pitches[+x.dataset.pl].lv=+x.value});
   el.querySelectorAll('[data-pdel]').forEach(x=>x.onclick=()=>{C.pitches.splice(+x.dataset.pdel,1);renderParr()});
   if($('#pAddPt'))$('#pAddPt').onclick=()=>{const t=PT.find(k=>!C.pitches.some(q=>q.t===k));if(t){C.pitches.push({t,lv:3});renderParr();const b=$('#pAddPt');if(b)b.scrollIntoView({block:'nearest'})}};
   el.querySelectorAll('[data-sub]').forEach(x=>x.onchange=()=>{if(x.value==='')delete C.sub[x.dataset.sub];else C.sub[x.dataset.sub]=+x.value});
-  el.querySelectorAll('#pVar [data-v]').forEach(b=>b.onclick=()=>{C.variant=+b.dataset.v;renderParr()});
-  el.querySelectorAll('#pPre [data-pre]').forEach(b=>b.onclick=()=>{Object.assign(C,PRE[+b.dataset.pre][1]);if(!isB){if(C.role==='先発'){C.stamina=Math.max(C.stamina,90)}}PLU.msg='ひな形を適用しました';renderParr()});
+  el.querySelectorAll('#pVar [data-v]').forEach(b=>b.onclick=()=>{tog(C.variants,+b.dataset.v);C.variant=C.variants[0];PVW.pickV=+b.dataset.v;renderParr()});
+  el.querySelectorAll('#pPre [data-pre]').forEach(b=>b.onclick=()=>{Object.assign(C,PRE[+b.dataset.pre][1]);if(!isB){if(C.roles.includes('先発')){C.stamina=Math.max(C.stamina,90)}}PLU.msg='ひな形を適用しました';renderParr()});
   const ovrUp=()=>{try{const x=isB?custBat(C):custPit(C),v=ovrOf(x,!isB);$('#ovrV').textContent=v;$('#ovrG').innerHTML=grd(v)}catch(e){}};ovrUp();
   el.querySelectorAll('input[data-s]').forEach(i=>i.addEventListener('input',ovrUp));
   pvwMount($('#pvwBox'),C);
@@ -9086,14 +9099,19 @@ function renderParr(){
   $('#cpGo').onclick=()=>{const x=cList.find(q=>q.orig===$('#cpPl').value);if(!x)return;PLU.cp.pl=x.orig;
     if(isB)Object.assign(C,{meet:x.meet,power:x.power,speed:x.speed,arm:x.arm,fielding:x.fielding||60,catching:x.catching||60,eye:x.eye||55,pos:x.prim||x.pos,bats:x.bats==='L'?'L':x.bats==='S'?'S':'R',stance:x.stance||0});
     else Object.assign(C,{speed:x.speed,control:x.control,stamina:x.starter?Math.max(80,x.stamina||100):Math.min(45,x.stamina||30),throws:x.throws,role:x.starter?'先発':x.sv>=10?'抑え':'中継ぎ',form:x.form||0,pitches:x.pitches.filter(q=>q.t!=='st').map(q=>({t:q.t,lv:q.lv}))});
+    if(isB){C.stances=[C.stance||0];C.sub={}}else{C.roles=[C.role];C.forms=[C.form||0]}
     PLU.msg=`${x.name}の能力を読み込みました（名前は変わりません）`;renderParr()};
   const persist=()=>{if(!C.name.trim()){PLU.msg='名前を入れてください';renderParr();return false}
-    _PQ.clear();const i=CUST.findIndex(c=>c.id===C.id);if(i>=0)CUST[i]=JSON.parse(JSON.stringify(C));else{if(CUST.length>=200){PLU.msg='自作選手は200人までです';renderParr();return false}CUST.push(JSON.parse(JSON.stringify(C)))}
+    _PQ.clear();{const o=C.twin&&CUSTM[C.twin];if(o){o.name=C.name;o.num=C.num}}
+    const i=CUST.findIndex(c=>c.id===C.id);if(i>=0)CUST[i]=JSON.parse(JSON.stringify(C));else{if(CUST.length>=200){PLU.msg='自作選手は200人までです';renderParr();return false}CUST.push(JSON.parse(JSON.stringify(C)))}
     saveCust();return true};
   $('#pSave').onclick=()=>{if(!persist())return;PLU.isNew=false;PLU.cur=null;PLU.msg='';renderParr()};
   $('#pCancel').onclick=()=>{PLU.cur=null;PLU.msg='';renderParr()};
-  if($('#pDup'))$('#pDup').onclick=()=>{if(!persist())return;const n=JSON.parse(JSON.stringify(C));n.id=custNew(C.k).id;n.name=(C.name+'（コピー）').slice(0,12);CUST.push(n);saveCust();PLU.cur=JSON.parse(JSON.stringify(n));PLU.isNew=false;PLU.msg='複製しました（別の選手として保存されています）';renderParr();el.scrollTop=0};
-  if($('#pDel'))$('#pDel').onclick=()=>{if(!confirm(`${C.name||'この選手'}を削除しますか？`))return;CUST=CUST.filter(c=>c.id!==C.id);CUST_AS=CUST_AS.filter(a=>a.id!==C.id);
+  if($('#twGo'))$('#twGo').onclick=()=>{const o=CUSTM[$('#twSel').value];if(!o||!C.name.trim()){PLU.msg=C.name.trim()?'合体する選手を選んでください':'名前を入れてください';renderParr();return}
+    C.twin=o.id;o.twin=C.id;if(!persist())return;PLU.msg=`「${o.name}」と合体しました（名前・背番号は共通）`;renderParr()};
+  if($('#twOff'))$('#twOff').onclick=()=>{const o=CUSTM[C.twin];if(o)o.twin=null;C.twin=null;if(!persist())return;PLU.msg='合体を解除しました';renderParr()};
+  if($('#pDup'))$('#pDup').onclick=()=>{if(!persist())return;const n=JSON.parse(JSON.stringify(C));n.id=custNew(C.k).id;n.twin=null;n.name=(C.name+'（コピー）').slice(0,12);CUST.push(n);saveCust();PLU.cur=JSON.parse(JSON.stringify(n));PLU.isNew=false;PLU.msg='複製しました（別の選手として保存されています）';renderParr();el.scrollTop=0};
+  if($('#pDel'))$('#pDel').onclick=()=>{if(!confirm(`${C.name||'この選手'}を削除しますか？`))return;{const o=C.twin&&CUSTM[C.twin];if(o)o.twin=null}CUST=CUST.filter(c=>c.id!==C.id);CUST_AS=CUST_AS.filter(a=>a.id!==C.id);
     let ch=false;for(const A of ARR){const n=A.players.length;A.players=A.players.filter(p=>!(p.team==='cust'&&p.n==='CUST:'+C.id));if(A.players.length!==n)ch=true}if(ch)saveArr();saveCust();PLU.cur=null;renderParr()};
   if(ex){
     $('#asTeam').onchange=()=>{PLU.as.team=$('#asTeam').value;PLU.as.rep='';renderParr()};
@@ -9102,11 +9120,13 @@ function renderParr(){
       if(t.startsWith('arr:')){const A=ARR.find(a=>a.id===t.slice(4));if(!A)return;const k=C.k,n=A.players.filter(p=>p.type===k).length;
         if(A.players.some(p=>p.team==='cust'&&p.n==='CUST:'+C.id)){PLU.msg='すでにそのチームにいます';renderParr();return}
         if(n>=(k==='b'?20:15)){PLU.msg=k==='b'?'野手は20人までです':'投手は15人までです';renderParr();return}
-        A.players.push({team:'cust',n:'CUST:'+C.id,type:k});delete ORD[A.id];saveArr();PLU.msg=`${A.name}に入れました`}
-      else{const rep=$('#asRep')?$('#asRep').value:'';CUST_AS=CUST_AS.filter(a=>a.id!==C.id);CUST_AS.push({id:C.id,team:t,rep:rep||null});saveCust();try{delete ORD[t]}catch(e){}
+        A.players.push({team:'cust',n:'CUST:'+C.id,type:k});
+        {const o=C.twin&&CUSTM[C.twin];if(o&&!A.players.some(p=>p.team==='cust'&&p.n==='CUST:'+o.id)&&A.players.filter(p=>p.type===o.k).length<(o.k==='b'?20:15))A.players.push({team:'cust',n:'CUST:'+o.id,type:o.k})}
+        delete ORD[A.id];saveArr();PLU.msg=`${A.name}に入れました${C.twin?'（二刀流の相方も一緒に）':''}`}
+      else{const rep=$('#asRep')?$('#asRep').value:'';CUST_AS=CUST_AS.filter(a=>a.id!==C.id&&a.id!==C.twin);CUST_AS.push({id:C.id,team:t,rep:rep||null});if(C.twin&&CUSTM[C.twin])CUST_AS.push({id:C.twin,team:t,rep:null});saveCust();try{delete ORD[t]}catch(e){}
         PLU.msg=`${TEAM[t].name}に入れました${rep?'（入れ替え）':''}。試合開始・ペナントの新規開始から反映されます`}
       renderParr()};
-    if($('#asOut'))$('#asOut').onclick=()=>{CUST_AS=CUST_AS.filter(a=>a.id!==C.id);let ch=false;for(const A of ARR){const n=A.players.length;A.players=A.players.filter(p=>!(p.team==='cust'&&p.n==='CUST:'+C.id));if(A.players.length!==n)ch=true}if(ch)saveArr();saveCust();PLU.msg='すべての球団から外しました';renderParr()}}
+    if($('#asOut'))$('#asOut').onclick=()=>{CUST_AS=CUST_AS.filter(a=>a.id!==C.id&&a.id!==C.twin);let ch=false;for(const A of ARR){const n=A.players.length;A.players=A.players.filter(p=>!(p.team==='cust'&&(p.n==='CUST:'+C.id||p.n==='CUST:'+C.twin)));if(A.players.length!==n)ch=true}if(ch)saveArr();saveCust();PLU.msg='すべての球団から外しました';renderParr()}}
 }
 $('#parrBack').onclick=()=>{if(PLU.cur){PLU.cur=null;renderParr()}else{AUI.cur=null;renderArr();show('arr')}};
 
