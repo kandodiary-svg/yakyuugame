@@ -1822,7 +1822,7 @@ const PITCH={ // bx: 右投手の横変化(+で三塁側/右打者の外角へ) 
  scr:{n:'スクリュー',bx:-0.95,by:0.7,spd:0.86,g:'sk'},
 };
 /* COMの強さ：fool=緩急・球種・変化球に惑わされる度合い／cs=ボール球に手を出す度合い／zs=ストライクを見逃さない度合い／ev=打球の強さ／smart=COM投手の配球の賢さ */
-const DIFF={easy:{n:'かんたん',ts:1.14,cur:1.18,win:1.2,cpu:-0.07,fool:1.75,cs:1.3,zs:-0.05,ev:0.94,smart:0.15},normal:{n:'ふつう',ts:1.03,cur:1,win:1,cpu:0,fool:1,cs:1,zs:0,ev:1,smart:0.5},real:{n:'リアル',ts:1.0,cur:0.9,win:0.9,cpu:0.05,fool:0.5,cs:0.78,zs:0.04,ev:1.04,smart:0.92}};
+const DIFF={easy:{n:'かんたん',ts:1.14,cur:1.18,win:1.2,cpu:-0.07,fool:1.75,cs:1.3,zs:-0.05,ev:0.94,smart:0.15,edge:0.5,ctl:1.35},normal:{n:'ふつう',ts:1.03,cur:1,win:1,cpu:0,fool:1,cs:1,zs:0,ev:1,smart:0.5,edge:0.85,ctl:1},real:{n:'リアル',ts:1.0,cur:0.9,win:0.9,cpu:0.05,fool:0.5,cs:0.78,zs:0.04,ev:1.04,smart:0.92,edge:0.97,ctl:0.7}};
 const COM_BASE=0.16; // 緩急・球種の補正を足したあとの全体の校正値（ふつうでNPB平均に合わせる）
 const PGRP={st:'f',ts:'f',sh:'f',ct:'f',sl:'b',hs:'b',vs:'b',sw:'b',cv:'b',sc:'b',dc:'b',kn:'b',fk:'o',sf:'o',sk:'o',pm:'o',ch:'o',cc:'o',sb:'o'};
 /* 打席内の配球履歴（COMの打者が「前の球との差」で惑わされる／球種を読む材料） */
@@ -2011,7 +2011,7 @@ function ratePitcher(a,npb){
     ps=`${a1}${lv} ${a2}${Math.max(1,lv-1)}`+(starter?` ${rest.filter(x=>x!==a2)[(h>>5)%(rest.length-1)]}${Math.max(1,lv-2)}`:'')}
   const cur=!npb||ipNum(IPs0)>=15,SVr=cur?SV0:SV,HLDr=cur?HLD0:HLD;
   const role=SVr>=5?'抑え':starter?'先発':HLDr>=15?'勝ちパ':'中継ぎ';
-  const form=h%20<9?0:h%20<18?1:2;
+  const form=h%20<11?0:h%20<19?1:2;
   ps=applyPitchTraining(n,ps);
   return{name:dispNameOf(n),orig:n,role,throws:thr,speed,vgap,vsd,vreal:!!vm,control,stamina,num:h%99+1,form,q:(3.8-era)*w+(k9-bb9)*0.15*w,sv:SVr,hld:HLDr,ip,starter,
     line:(starter?`${G0}登板 ${IPs0}回 防${era0.toFixed(2)}`:`${G0}登板 ${SV0}S ${HLD0}H 防${era0.toFixed(2)}`)+(borrow>10?'（過去実績を加味）':''),
@@ -2560,7 +2560,7 @@ const LIFT_T={st:4.8,ts:2.6,sh:2.4,sk:1.4,scr:1.4,ct:3.2,sl:1.0,hs:1.4,vs:-0.5,s
 function pitchLift(type){if(LIFT_T[type]!=null)return LIFT_T[type];const g=PITCH[type]&&PITCH[type].g;return {st:4.8,sh:2.4,sk:1.4,sl:1.0,cv:-2.6,fk:0.2,ch:1.6}[g]??2}
 function makePitch(type,tgt,pit,fat,final){
   const def=PITCH[type];const q=pit.pitches.find(z=>z.t===type);const lv=type==='st'?0:(q?q.lv:1);
-  const tire=clamp((fat-0.65)*2.2,0,1);const _tid=(G&&G.t&&G.t[fieldIdx()])?G.t[fieldIdx()].id:null;const _cd=_tid?condOf(_tid,pit.orig||pit.name).m:0;const _wall=_tid?teamSkillOf(_tid):null;const _fz=_tid?fatOf(_tid,pit):0,_fv=_fz*0.035;const _PS=G&&G.r?gSk(pit,true):{};const ctrl=pit.control-tire*22-_fz*0.07+_cd*42+(_tid?4*tsLv(_tid,'wall')+2*tsLv(_tid,'ace'):0)+(_PS['対ピンチ']&&skRisp()?8*_PS['対ピンチ']:0);const sd=(105-ctrl)*0.0024;
+  const tire=clamp((fat-0.65)*2.2,0,1);const _tid=(G&&G.t&&G.t[fieldIdx()])?G.t[fieldIdx()].id:null;const _cd=_tid?condOf(_tid,pit.orig||pit.name).m:0;const _wall=_tid?teamSkillOf(_tid):null;const _fz=_tid?fatOf(_tid,pit):0,_fv=_fz*0.035;const _PS=G&&G.r?gSk(pit,true):{};const ctrl=pit.control-tire*22-_fz*0.07+_cd*42+(_tid?4*tsLv(_tid,'wall')+2*tsLv(_tid,'ace'):0)+(_PS['対ピンチ']&&skRisp()?8*_PS['対ピンチ']:0);const sd=(105-ctrl)*0.0024*(final?(DIFF[G.diff]||DIFF.normal).ctl||1:1);
   let tx=tgt.x+gauss(0,sd),ty=tgt.y+gauss(0,sd);
   if(type==='st'&&_PS&&_PS['シュート回転']<0&&Math.random()<0.35){tx*=0.7;ty=ty+(ZN.cy-ty)*0.3}// シュート回転：真っすぐが真ん中寄りに甘く入る
   let kmh=type==='st'?Math.round(pit.speed-(pit.vgap||0)-_fv+gauss(0,pit.vsd||1.2)):Math.round((pit.speed-(pit.vgap||0)-_fv)*def.spd+gauss(0,1.5));
@@ -2856,7 +2856,7 @@ function userContact(p,dt,cur,mode,bat){
 }
 /* 打撃・投球の校正値（NPB公式 2025年セ・リーグ合計：打率.242 得点3.21/試合 本塁打0.63/試合 四球7.0% 三振19.5% 盗塁0.49/試合） */
 const QREF=135.5; // 球速の基準（実測の球速に直したためリーグ平均が約145.6km/hになった。旧150.4km/h時の140に相当）
-const BAT_CAL={chase:0.47,contact:0.558,foul:0.24,ev:1.015,steal:3.2,err:2.3,m2:1.8,m3:0.6,zsw:0.70,sbBase:0.63,pbase:39.6,pslope:0.083,sfloor:42,mslope:0.0022,run:0};
+const BAT_CAL={chase:0.47,contact:0.55,foul:0.24,ev:1.015,steal:3.2,err:2.3,m2:1.8,m3:0.6,zsw:0.70,sbBase:0.63,pbase:39.6,pslope:0.083,sfloor:42,mslope:0.0022,run:0};
 function cpuBat(p,bat){
   const e=Math.max(Math.abs(p.tx)/ZN.hx,Math.abs(p.ty-ZN.cy)/ZN.hy);
   const inZ=p.inZone,two=G.s===2;
@@ -2938,14 +2938,38 @@ function addRuns(n){if(!n)return;const before0=G.runs[0],before1=G.runs[1],h=G.h
   for(let s=0;s<2;s++)if(G.runs[s]<G.runs[1-s])G.hadDeficit[s]=true;
   if(h===1&&G.inn>=G.maxInn&&G.runs[1]>G.runs[0])G.walkoff=true}
 function cpuChoose(){
-  const p=curPitcher(),ars=p.pitches;
+  const p=curPitcher(),ars=p.pitches,D=DIFF[G.diff]||DIFF.normal,sm=D.smart;
+  const bt=curBatter(),out=batsOf(bt)==='L'?-1:1;                       // 外角側のxの符号
+  const hist=(G.pa&&G.pa.bat===bt&&G.pa.hist)||[],prev=hist[hist.length-1],pg=prev?(PGRP[prev.type]||'f'):null;
+  const pick=a=>a[Math.floor(Math.random()*a.length)],off=ars.filter(z=>z.t!=='st');
   let type='st';
   if(ars.length>1){const r=Math.random();if(G.s===2&&r<0.6)type=ars[1+Math.floor(Math.random()*(ars.length-1))].t;else if(r>0.47)type=ars[1+Math.floor(Math.random()*(ars.length-1))].t}
-  const zoneP=G.b===3?0.8:G.s===2?0.42:0.56;
+  const smart=off.length&&Math.random()<sm;                                // 難しいほど、狙った配球（緩急・カウント別の球種）をする
+  if(smart){
+    if(G.s===2)type=Math.random()<0.8?pick(off.slice().sort((x,y)=>y.lv-x.lv).slice(0,Math.max(1,Math.min(2,off.length)))).t:'st';   // 追い込んだら決め球
+    else if(pg==='f')type=Math.random()<0.65?pick(off).t:'st';                                                                        // 速球のあとは変化球で緩急
+    else if(pg)type=Math.random()<0.55?'st':pick(off.filter(z=>z.t!==prev.type).concat(off.length>1?[]:off)).t;                       // 変化球のあとは速球か別の球種
+    else type=G.b>=2?'st':(Math.random()<0.55?'st':pick(off).t);
+  }
+  let zoneP=G.b===3?0.8:G.s===2?0.42:0.56;if(smart)zoneP=Math.min(0.9,zoneP+0.16);          // 狙い球は無駄なボール球を減らし、ストライクはふちへ
   let x,y;
-  if(Math.random()<zoneP){x=(Math.random()*2-1)*ZN.hx*0.85;y=ZN.cy+(Math.random()*2-1)*ZN.hy*0.85}
-  else{x=(Math.random()*2-1)*ZN.hx*1.2;y=ZN.cy+(Math.random()*2-1)*ZN.hy*1.2;const s=Math.floor(Math.random()*4);
-    if(s===0)x=-ZN.hx-0.05-Math.random()*0.12;else if(s===1)x=ZN.hx+0.05+Math.random()*0.12;else if(s===2)y=ZN.y0-0.05-Math.random()*0.15;else y=ZN.y1+0.05+Math.random()*0.1}
+  const strike=Math.random()<zoneP;
+  if(strike){
+    const e=D.edge,ce=e-0.12;                                                           // 狙う位置がゾーンのどれだけ端か（かんたん=真ん中寄り／リアル=きわきわ）
+    if(smart&&e>0.6){                                                         // 四隅・ふち：外角低め中心、前の球と高低・内外を変える
+      let sx=(Math.random()<0.6?out:-out),sy=Math.random()<0.5?1:-1;
+      if(prev){if(Math.abs(prev.tx)>ZN.hx*0.5)sx=-Math.sign(prev.tx)||sx;if(prev.ty>ZN.cy+0.1)sy=-1;else if(prev.ty<ZN.cy-0.1)sy=1}
+      if(G.b>=2&&G.s<2){x=sx*ZN.hx*ce*(0.8+Math.random()*0.2);y=ZN.cy+sy*ZN.hy*ce*(0.7+Math.random()*0.3)}                      // 四球が怖い時もふちを突く
+      else{x=sx*ZN.hx*ce*(0.85+Math.random()*0.15);y=ZN.cy+sy*ZN.hy*ce*(0.85+Math.random()*0.15)}
+    }else{x=(Math.random()*2-1)*ZN.hx*e;y=ZN.cy+(Math.random()*2-1)*ZN.hy*e}
+  }else{
+    x=(Math.random()*2-1)*ZN.hx*1.2;y=ZN.cy+(Math.random()*2-1)*ZN.hy*1.2;const s=Math.floor(Math.random()*4);
+    if(smart&&G.s>=1){                                                        // カウント有利なら、ゾーンのすぐ外（振らせる球）
+      const lowSide=Math.random()<0.55;
+      if(lowSide){y=ZN.y0-0.05-Math.random()*0.1;x=out*(Math.random()*ZN.hx*1.1)}else{x=out*(ZN.hx+0.04+Math.random()*0.1)}
+    }else{
+      if(s===0)x=-ZN.hx-0.05-Math.random()*0.12;else if(s===1)x=ZN.hx+0.05+Math.random()*0.12;else if(s===2)y=ZN.y0-0.05-Math.random()*0.15;else y=ZN.y1+0.05+Math.random()*0.1}
+  }
   if(type==='fk'||type==='sk'||type==='ch'||type==='cv')y-=0.08;
   return{type,x,y};
 }
@@ -5851,10 +5875,16 @@ function mcTrack(T,tm,out){const n=T.d.length,d=T.d;let f=(tm-T.t0)*T.fps;f=f<0?
 const _sm3=x=>{x=x<0?0:x>1?1:x;return x*x*(3-2*x)};
 function runMix(v){return _sm3((v-4.4)/2.4)}
 function runRate(v){const w=runMix(v),D=MCD.jog.D*(1-w)+MCD.sprint.D*w;return 6.2832*v/D}
-const _mcT0={t0:0,fps:60,d:null};
+let _pkT=null;const _mcT0={t0:0,fps:60,d:null};
 function mcPitch(P,k,variant,form){const T=MCD[variant?'p1':'p0'];const sec=T.rel+(k-1.0)*1.5;mcApply(P,mcTrack(T,T.t0+Math.max(0,Math.min(2.399,sec)),_mcA));
   const wr=k<0.72?0:k<0.9?(k-0.72)/0.18:k<1.08?1:k<1.3?1-(k-1.08)/0.22:0,f=form||0;
-  if(wr>0&&f){const dy=[0,-0.2,-0.5][f]*wr,dx=[0,0.06,0.2][f]*wr;P.hR.y+=dy;P.hR.x+=dx;if(P.eR){P.eR.y+=dy*0.6;P.eR.x+=dx*0.6}}
+  {// 元のモーキャプは腕の振りが低め（リリースの手が肩の高さ付近＝サイドスロー風、腕が真横に伸びる）。投げ腕の軌道だけ、フォーム別の上からの腕の振りに差し替える（体の回転・足はモーキャプのまま）
+   const w=k<0.56?0:k<0.7?_sm3((k-0.56)/0.14):k<1.1?1:k<1.3?1-_sm3((k-1.1)/0.2):0;
+   if(w>0){const PK=PKS[f],T=_pkT||(_pkT=newPose());keyed(T,PK,Math.min(k,1.6));
+     const hx=T.hR.x-T.pel.x,hy0=T.hR.y-T.pel.y,hz0=T.hR.z-T.pel.z,hy=hy0,hz=hz0+0.35*Math.max(0,Math.sin(P.rx)-Math.sin(T.rx));
+     const nx=P.pel.x+hx,ny=P.pel.y+hy,nz=P.pel.z+hz;
+     P.hR.x+=(nx-P.hR.x)*w;P.hR.y+=(ny-P.hR.y)*w;P.hR.z+=(nz-P.hR.z)*w;
+     if(P.eR&&w>0.02){if(w>0.6){P.eR=null}else{P.eR.x+=(P.hR.x-P.eR.x)*0;}}}}
   return P}
 function mcQuirk(P,k,q){
   const ws=k<0.35?0:k<0.7?(k-0.35)/0.35:1;if(ws>0&&q.stride!==1){const f=(q.stride-1)*ws,dz=P.pel.z*f*0.7;P.fL.z*=1+f;P.pel.z+=dz;P.hL.z+=dz;P.hR.z+=dz;if(P.eL)P.eL.z+=dz;if(P.eR)P.eR.z+=dz}
@@ -6698,7 +6728,7 @@ function animate(t,dt){_FDT=dt;_FRAME++;
       if(p&&U.phase==='flight'&&(OPT.assist==='on'||(OPT.assist==='auto'&&G.diff==='easy'))){const k=Math.min(1,dt*2.2);U.cursor.x+=(p.tx-U.cursor.x)*k*0.5;U.cursor.y+=(p.ty-U.cursor.y)*k*0.5}}
     else tring.visible=false;
     if(p&&U.phase==='flight'&&(userBat()||G.auto)){const st=predStart();if(st<1){const f=window.TROVR!=null?window.TROVR:clamp((t-U.rel)/(U.arrive-U.rel),0,1);
-      if(f>=st){predM.visible=true;const e=(f-st)/Math.max(0.01,1-st);predM.position.set(p.tx,p.ty,0.02);predM.scale.setScalar(0.60-e*0.10);predM.material.opacity=0.85+0.15*e;predM.material.color.set('#ffffff')}}}
+      if(f>=st&&(window.TROVR!=null||t>=U.rel)){predM.visible=true;const e=(f-st)/Math.max(0.01,1-st);{const kk=breakK(pitchProfile(p.type),f),sx=p.sx!=null?p.sx:p.tx,sy=p.sy!=null?p.sy:p.ty;predM.position.set(sx+(p.tx-sx)*kk,sy+(p.ty-sy)*kk,0.02)}predM.scale.setScalar(0.60-e*0.10);predM.material.opacity=0.85+0.15*e;predM.material.color.set('#ffffff')}}}
     if(U.phase==='aim'){aimM.visible=true;aimM.position.set(U.aim.x,U.aim.y,0);aimM.scale.setScalar(Math.max(1,camera.position.z/10))}
     if(U.lastMark&&t<U.lastMark.until&&(U.phase==='wait')){markM.visible=true;markM.position.set(U.lastMark.x,U.lastMark.y,0.02);markM.scale.setScalar(Math.max(1.3,camera.position.z/8))}
   }
@@ -9075,7 +9105,7 @@ let telopTimer=0;
 function telop(txt,color='#fff',big=false){const el=$('#telop');el.textContent=txt;el.style.color=color;el.className=big?'show big':'show';void el.offsetWidth;clearTimeout(telopTimer);telopTimer=setTimeout(()=>el.className='',big?2000:1100)}
 let casterTimer=0;
 function caster(txt){const el=$('#caster');el.textContent=txt;el.classList.add('on');clearTimeout(casterTimer);casterTimer=setTimeout(()=>el.classList.remove('on'),3200)}
-function predStart(){if(OPT.predict==='off')return 1;if(OPT.predict==='on')return 0.08;return {easy:0.08,normal:0.12,real:0.18}[G.diff]}
+function predStart(){if(OPT.predict==='off')return 1;return 0}
 let fbTimer=0;
 function swingFeedback(p,dt){const win=timingWin();const a=Math.abs(dt)/win;
   const tm=a<=0.3?'<b style="color:#5be36a">ジャスト</b>':a<=1?(dt<0?'少し早い':'少し遅い'):(dt<0?'<b style="color:#ff6a5e">早すぎ</b>':'<b style="color:#ff6a5e">遅すぎ</b>');
@@ -9263,7 +9293,7 @@ function renderMenu(){
   m.innerHTML=`<div class="sheet"><h3 class="head">タイム</h3>${lineHTML()}
     <button class="btn primary" id="mResume">試合に戻る</button>
     <button class="btn primary" id="mSub">選手交代（投手・代打・代走・守備）</button>
-    <button class="btn" id="mPred">ボール到達点マーカー：${{auto:'標準（常時表示）',on:'最速表示',off:'OFF'}[OPT.predict]}</button><button class="btn" id="mGuide">タイミングリング：${OPT.guide?'ON':'OFF'}</button><button class="btn" id="mAssist">カーソル補助：${{auto:'かんたんのみ',on:'ON',off:'OFF'}[OPT.assist]}</button><button class="btn" id="mManual">守備の送球先・走塁の指示：${OPT.manualPlay===false?'OFF（すべて自動）':'ON（選ばなければ自動）'}</button><button class="btn" id="mPrev">投球の予想軌道：${OPT.preview?'ON':'OFF'}</button><button class="btn" id="mHelp">操作説明を見る</button>
+    <button class="btn" id="mPred">ボール到達点マーカー：${{auto:'ON（投げた瞬間から表示）',on:'ON（投げた瞬間から表示）',off:'OFF'}[OPT.predict]}</button><button class="btn" id="mGuide">タイミングリング：${OPT.guide?'ON':'OFF'}</button><button class="btn" id="mAssist">カーソル補助：${{auto:'かんたんのみ',on:'ON',off:'OFF'}[OPT.assist]}</button><button class="btn" id="mManual">守備の送球先・走塁の指示：${OPT.manualPlay===false?'OFF（すべて自動）':'ON（選ばなければ自動）'}</button><button class="btn" id="mPrev">投球の予想軌道：${OPT.preview?'ON':'OFF'}</button><button class="btn" id="mHelp">操作説明を見る</button>
     <button class="btn" id="mVoice">審判コール（音声）：${OPT.voice?'ON':'OFF'}</button><button class="btn" id="mTrail">変化の軌道ドット：${OPT.trail?'ON':'OFF'}</button><button class="btn" id="mPath">投球後の軌道表示：${OPT.path?'ON':'OFF'}</button><button class="btn" id="mZone">ストライクゾーン表示：${{auto:'自動（難易度）',normal:'通常（外枠）',easy:'EASY（3×3）',practice:'練習（濃い枠）',real:'REAL（極薄）'}[OPT.zone||'auto']}</button>
     <button class="btn" id="mSkip">この回をオートで進める</button>
     <button class="btn" id="mSound">サウンド設定</button>
