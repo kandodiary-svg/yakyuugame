@@ -2941,12 +2941,12 @@ function resolvePlay(sim,c){
 }
 
 /* ================= 打撃判定 ================= */
-function cursorRX(bat,mode){const cm=(PEN&&G&&G.t[G.half])?condOf(G.t[G.half].id,bat.orig||bat.name).m:0;let sk=1;try{sk=skSit(bat).cur*(mode==='bunt'?1+0.2*(gSk(bat,false)['バント']||0):1)}catch(e){}return(0.068+bat.meet*0.0009)*(DIFF[G.diff]||DIFF.normal).cur*(mode==='strong'?0.64:mode==='bunt'?1.4:1.32)*(1+cm*0.75)*sk}
+function cursorRX(bat,mode){const cm=(PEN&&G&&G.t[G.half])?condOf(G.t[G.half].id,bat.orig||bat.name).m:0;let sk=1;try{sk=skSit(bat).cur*(mode==='bunt'?1+0.2*(gSk(bat,false)['バント']||0):1)}catch(e){}return(0.068+bat.meet*0.0009)*(DIFF[G.diff]||DIFF.normal).cur*(mode==='strong'?0.64:mode==='bunt'?1.4:0.95)*(1+cm*0.75)*sk}
 // カーソルの縦半径：ミート＝横長の楕円（面積は旧カーソルと同じ）、強振＝小さな円、バント＝従来形
 function cursorRY(rx,mode){return mode==='strong'?rx:mode==='bunt'?rx*0.75:rx*0.65}
 function timingWin(){return 0.105*(DIFF[G.diff]||DIFF.normal).ts*(DIFF[G.diff]||DIFF.normal).win}
 function userContact(p,dt,cur,mode,bat){
-  const win=timingWin()*(mode==='bunt'?1.8:1),rx=cursorRX(bat,mode),ry=cursorRY(rx,mode);
+  const win=timingWin()*(mode==='bunt'?1.8:1),rx=cursorRX(bat,mode)*(mode==='meet'?1.25:1),ry=cursorRY(rx,mode);
   const dx=(p.tx-cur.x)/rx,dy=(p.ty-cur.y)/ry,d=Math.hypot(dx,dy);
   if(mode==='bunt'){if(d<=1&&Math.abs(dt)<=win){const q=clamp(1-d*0.5,0,1);return{k:'contact',ev:10+q*7+Math.random()*3,launch:gauss(-6,7),spray:gauss(0,22)*(batsOf(bat)==='R'?1:-1),q:0,bunt:true}}
     if(d<=1.5&&Math.abs(dt)<=win*1.3)return{k:'foul',swing:true};return{k:'strike',swing:true}}
@@ -9401,7 +9401,7 @@ function predStart(){if(OPT.predict==='off')return 1;return 0}
 let fbTimer=0;
 function swingFeedback(p,dt){const win=timingWin();const a=Math.abs(dt)/win;
   const tm=a<=0.3?'<b style="color:#5be36a">ジャスト</b>':a<=1?(dt<0?'少し早い':'少し遅い'):(dt<0?'<b style="color:#ff6a5e">早すぎ</b>':'<b style="color:#ff6a5e">遅すぎ</b>');
-  const rx=cursorRX(curBatter(),U.mode),dx=(p.tx-U.cursor.x)/rx,dy=(p.ty-U.cursor.y)/cursorRY(rx,U.mode);
+  const rx=cursorRX(curBatter(),U.mode)*(U.mode==='meet'?1.25:1),dx=(p.tx-U.cursor.x)/rx,dy=(p.ty-U.cursor.y)/cursorRY(rx,U.mode);
   let ps=Math.hypot(dx,dy)<=0.35?'<b style="color:#5be36a">芯</b>':Math.hypot(dx,dy)<=1?'カーソル内':'';
   const dir=[];if(dy>0.35)dir.push('上');if(dy<-0.35)dir.push('下');if(dx>0.35)dir.push('右');if(dx<-0.35)dir.push('左');
   if(dir.length)ps+=(ps?'（':'')+'ボールは'+dir.join('')+'側'+(ps?'）':'');
