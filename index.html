@@ -1444,6 +1444,28 @@ table td,.yt td,.pn-d,.tr-p em{font-variant-numeric:tabular-nums}
 #app #scr-order .pw-act .btn{min-height:46px}
 #app #scr-parr #parrBody,#app #scr-arr #arrBody,#app #scr-order #ordBody{padding-bottom:0!important}
 #app #parrBody .sticky,#app #scr-arr .sticky,#app #scr-order .pw-act{padding-bottom:18px!important}
+
+/* 表示崩れ修正：狭い画面での一覧カード・保存バー・切替ボタン */
+.pc-s{flex-wrap:wrap;gap:4px 10px}.pc-s>span{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.pc-s .g,.pc-s [class*=chip]{display:inline-grid;place-items:center}
+@media(max-width:420px){.pcard{flex-wrap:wrap;row-gap:6px}.pc-w{max-width:none;width:100%;order:3;text-align:left;padding-left:64px;margin-top:-4px}.pc-w br{display:none}}
+#app .pvwWrap .pvwCap{max-width:calc(100% - 130px)}
+#app #parrBody .sticky .seg,#app #scr-arr .sticky .seg,#app #arrBody>.seg{display:flex;width:100%;gap:6px}
+#app #parrBody .sticky .seg button,#app #scr-arr .sticky .seg button,#app #arrBody>.seg button{flex:1 1 0;min-width:0;min-height:46px;white-space:normal;line-height:1.25;font-size:14px}
+#app #scr-arr .sticky .seg #aSave{flex:2 1 0}
+#app #scr-arr .sticky{padding-right:0!important}
+#app #parrBody .sticky{padding-right:0!important}
+#app #scr-arr .sticky,#app #parrBody .sticky{padding-bottom:18px}
+#app #scr-parr .ptab>.fld{grid-template-columns:1fr}
+#app #scr-parr .ptab>.fld>label{margin-bottom:2px}
+
+#app #scr-parr .pcard{height:auto!important;min-height:0!important;overflow:visible!important;padding:12px!important;align-items:center}
+#app #scr-parr .pc-s{padding-bottom:2px}
+#app #parrBody .sticky,#app #scr-arr .sticky{align-self:stretch;width:100%;padding-right:56px!important;box-sizing:border-box}
+#app #scr-arr .sticky .seg{width:100%}
+#app .pvwWrap .pvwCap{max-width:calc(100% - 160px)!important}
+#app #parrBody>*,#app #arrBody>*{flex-shrink:0}
+#app #scr-parr .pcard{flex:none}
 </style>
 <!-- BBH42 v62: S0-2 年度別/通算成績UI・集計を実装 -->
 </head>
