@@ -2893,10 +2893,10 @@ function resolvePlay(sim,c){
 }
 
 /* ================= 打撃判定 ================= */
-function cursorRX(bat,mode){const cm=(PEN&&G&&G.t[G.half])?condOf(G.t[G.half].id,bat.orig||bat.name).m:0;let sk=1;try{sk=skSit(bat).cur*(mode==='bunt'?1+0.2*(gSk(bat,false)['バント']||0):1)}catch(e){}return(0.068+bat.meet*0.0009)*(DIFF[G.diff]||DIFF.normal).cur*(mode==='strong'?0.52:mode==='bunt'?1.35:1.29)*(1+cm*0.75)*sk}
+function cursorRX(bat,mode){const cm=(PEN&&G&&G.t[G.half])?condOf(G.t[G.half].id,bat.orig||bat.name).m:0;let sk=1;try{sk=skSit(bat).cur*(mode==='bunt'?1+0.2*(gSk(bat,false)['バント']||0):1)}catch(e){}return(0.068+bat.meet*0.0009)*(DIFF[G.diff]||DIFF.normal).cur*(mode==='strong'?0.70:mode==='bunt'?1.5:1.55)*(1+cm*0.75)*sk}
 // カーソルの縦半径：ミート＝横長の楕円（面積は旧カーソルと同じ）、強振＝小さな円、バント＝従来形
-function cursorRY(rx,mode){return mode==='strong'?rx:mode==='bunt'?rx*0.75:rx*0.45}
-function timingWin(){return 0.085*(DIFF[G.diff]||DIFF.normal).ts*(DIFF[G.diff]||DIFF.normal).win}
+function cursorRY(rx,mode){return mode==='strong'?rx:mode==='bunt'?rx*0.8:rx*0.8}
+function timingWin(){return 0.105*(DIFF[G.diff]||DIFF.normal).ts*(DIFF[G.diff]||DIFF.normal).win}
 function userContact(p,dt,cur,mode,bat){
   const win=timingWin()*(mode==='bunt'?1.8:1),rx=cursorRX(bat,mode),ry=cursorRY(rx,mode);
   const dx=(p.tx-cur.x)/rx,dy=(p.ty-cur.y)/ry,d=Math.hypot(dx,dy);
@@ -2920,10 +2920,10 @@ function userContact(p,dt,cur,mode,bat){
     if(jammed)q*=0.6;if(off)q*=0.7;
     const grade=q>=0.95?'PERFECT':q>=0.82?'GOOD':q>=0.55?'NORMAL':q>=0.3?'WEAK':'BAD';
     const base=32.5+bat.power*0.2;
-    let ev=base*(strong?(0.4+0.66*Math.pow(q,1.6))*1.07:(0.55+0.42*q)*0.95)*(1+_uc*0.42)*_ss.ev*_sp.ev;
+    let ev=base*(strong?(0.4+0.66*Math.pow(q,1.6))*1.07:(0.60+0.40*q)*0.98)*(1+_uc*0.42)*_ss.ev*_sp.ev;
     if(jammed)ev*=0.72;if(off)ev*=0.78;
     // 高低：高めはポップ、低めはゴロ（芯で捉えた低めはライナーも）
-    let launch=11+dy*36+gauss(0,4)+_ss.la*q;
+    let launch=11+dy*43+gauss(0,4)+_ss.la*q;
     if(p.ty>ZN.y1-0.05)launch+=q>0.9?4:9;if(p.ty<ZN.y0+0.08)launch-=q>0.95?2:8;
     if(jammed)launch+=Math.random()<0.5?18:-14;if(off)launch-=6;
     launch=clamp(launch,-25,75);
@@ -5415,7 +5415,7 @@ function renderSetup(){
    <div class="opt"><label>イニング数</label>${seg('inn',[[3,'3回'],[6,'6回'],[9,'9回']])}</div>
    <div class="opt"><label>攻撃</label>${seg('home',[[false,'先攻'],[true,'後攻']])}</div>
    <div class="opt"><label>難易度</label>${seg('diff',[['easy','かんたん'],['normal','ふつう'],['real','リアル']])}</div>
-   <p class="hint" style="margin:-4px 0 12px;font-size:12px;text-align:right">${{easy:'球が約1.14倍ゆっくり。カーソル大きめ・タイミング幅広め・着弾予測が早めに出ます',normal:'球が約1.03倍ゆっくり',real:'実際の球速そのまま（150km/hで約0.45秒）'}[S.diff]}</p>
+   <p class="hint" style="margin:-4px 0 12px;font-size:12px;text-align:right">${{easy:'球が約1.14倍ゆっくり。カーソル大きめ・タイミング幅広め・着弾予測が早めに出ます',normal:'球が約1.03倍ゆっくり。カーソル補助つき（カーソルが少しボールに寄ります）',real:'実際の球速そのまま（150km/hで約0.45秒）'}[S.diff]}</p>
    <div class="opt"><label>オーダー</label><div class="seg edit"><button id="ordMy">${a.short}</button><button id="ordOp">${b.short}</button></div></div>
    <button class="btn primary big" id="playBall" style="width:100%;margin-top:12px">プレイボール</button>`;
   $('#setupBody').querySelectorAll('.seg button').forEach(x=>x.onclick=()=>{
@@ -6810,7 +6810,7 @@ function animate(t,dt){_FDT=dt;_FRAME++;
       tring.visible=false;
       if(p&&OPT.guide&&(U.phase==='flight'||U.phase==='windup')&&U.swing==null){const tot=U.arrive-U.wind;const e=clamp((U.arrive-t)/tot,0,1);
         if(e>0){tring.visible=true;tring.position.set(U.cursor.x,U.cursor.y,0.015);const k=1+e*2.6;tring.scale.set(rx*1.04*k,ry*1.04*k,1);tring.material.color.set(e<0.12?'#ffd23a':'#ffffff');tring.material.opacity=0.35+0.65*(1-e)}}
-      if(p&&U.phase==='flight'&&(OPT.assist==='on'||(OPT.assist==='auto'&&G.diff==='easy'))){const k=Math.min(1,dt*2.2);U.cursor.x+=(p.tx-U.cursor.x)*k*0.5;U.cursor.y+=(p.ty-U.cursor.y)*k*0.5}}
+      if(p&&U.phase==='flight'&&(OPT.assist==='on'||(OPT.assist==='auto'&&(G.diff==='easy'||G.diff==='normal')))){const k=Math.min(1,dt*2.2)*(G.diff==='easy'||OPT.assist==='on'?0.5:0.3);U.cursor.x+=(p.tx-U.cursor.x)*k;U.cursor.y+=(p.ty-U.cursor.y)*k}}
     else tring.visible=false;
     if(p&&U.phase==='flight'&&(userBat()||G.auto)){const st=predStart();if(st<1){const f=window.TROVR!=null?window.TROVR:clamp((t-U.rel)/(U.arrive-U.rel),0,1);
       if(f>=st&&(window.TROVR!=null||t>=U.rel)){predM.visible=true;const e=(f-st)/Math.max(0.01,1-st);{const kk=breakK(pitchProfile(p.type),f),sx=p.sx!=null?p.sx:p.tx,sy=p.sy!=null?p.sy:p.ty;predM.position.set(sx+(p.tx-sx)*kk,sy+(p.ty-sy)*kk,0.02)}predM.scale.setScalar(0.60-e*0.10);predM.material.opacity=0.85+0.15*e;predM.material.color.set('#ffffff')}}}
@@ -9477,7 +9477,7 @@ function showHelp(force){
    <ol><li>打つとき、走者がいれば「作戦」から<b>盗塁・エンドラン・スクイズ</b>（その1球だけ）。投げるときは<b>牽制・敬遠・守備位置</b>（前進守備／ゲッツー態勢）</li>
    <li>打球が飛ぶと少しスローになり、<b>守っているときは送球先</b>（二塁・三塁・一塁・本塁、キーボードは矢印）、<b>攻めているときは「進め！」「止まれ」</b>（↑↓）を選べる。選ばなければ自動</li>
    <li>選手パネルの能力（○チャンスなど）は、場面が合うと光って効果が出る</li></ol></div>
-   <p class="hint" style="text-align:left">難しいときは「かんたん」でプレーするか、メニューで「カーソル補助」をONに。</p>
+   <p class="hint" style="text-align:left">難しいときは「かんたん」でプレーするか、メニューで「カーソル補助」をONに。迷ったら<b>ミート打ち</b>（広いカーソル）で、難しい球は見送ってOKです。</p>
    <button class="btn primary" id="hOk">OK</button></div>`;
   $('#hOk').onclick=()=>resumeGame();
 }
@@ -9492,7 +9492,7 @@ function renderMenu(){
   m.innerHTML=`<div class="sheet"><h3 class="head">タイム</h3>${lineHTML()}
     <button class="btn primary" id="mResume">試合に戻る</button>
     <button class="btn primary" id="mSub">選手交代（投手・代打・代走・守備）</button>
-    <button class="btn" id="mPred">ボール到達点マーカー：${{auto:'ON（投げた瞬間から表示）',on:'ON（投げた瞬間から表示）',off:'OFF'}[OPT.predict]}</button><button class="btn" id="mGuide">タイミングリング：${OPT.guide?'ON':'OFF'}</button><button class="btn" id="mAssist">カーソル補助：${{auto:'かんたんのみ',on:'ON',off:'OFF'}[OPT.assist]}</button><button class="btn" id="mManual">守備の送球先・走塁の指示：${OPT.manualPlay===false?'OFF（すべて自動）':'ON（選ばなければ自動）'}</button><button class="btn" id="mPrev">投球の予想軌道：${OPT.preview?'ON':'OFF'}</button><button class="btn" id="mHelp">操作説明を見る</button>
+    <button class="btn" id="mPred">ボール到達点マーカー：${{auto:'ON（投げた瞬間から表示）',on:'ON（投げた瞬間から表示）',off:'OFF'}[OPT.predict]}</button><button class="btn" id="mGuide">タイミングリング：${OPT.guide?'ON':'OFF'}</button><button class="btn" id="mAssist">カーソル補助：${{auto:'かんたん・ふつう',on:'ON（どの難易度でも）',off:'OFF'}[OPT.assist]}</button><button class="btn" id="mManual">守備の送球先・走塁の指示：${OPT.manualPlay===false?'OFF（すべて自動）':'ON（選ばなければ自動）'}</button><button class="btn" id="mPrev">投球の予想軌道：${OPT.preview?'ON':'OFF'}</button><button class="btn" id="mHelp">操作説明を見る</button>
     <button class="btn" id="mVoice">審判コール（音声）：${OPT.voice?'ON':'OFF'}</button><button class="btn" id="mTrail">変化の軌道ドット：${OPT.trail?'ON':'OFF'}</button><button class="btn" id="mPath">投球後の軌道表示：${OPT.path?'ON':'OFF'}</button><button class="btn" id="mZone">ストライクゾーン表示：${{auto:'自動（難易度）',normal:'通常（外枠）',easy:'EASY（3×3）',practice:'練習（濃い枠）',real:'REAL（極薄）'}[OPT.zone||'auto']}</button>
     <button class="btn" id="mSkip">この回をオートで進める</button>
     <button class="btn" id="mSound">サウンド設定</button>
