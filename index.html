@@ -2893,9 +2893,9 @@ function resolvePlay(sim,c){
 }
 
 /* ================= 打撃判定 ================= */
-function cursorRX(bat,mode){const cm=(PEN&&G&&G.t[G.half])?condOf(G.t[G.half].id,bat.orig||bat.name).m:0;let sk=1;try{sk=skSit(bat).cur*(mode==='bunt'?1+0.2*(gSk(bat,false)['バント']||0):1)}catch(e){}return(0.068+bat.meet*0.0009)*(DIFF[G.diff]||DIFF.normal).cur*(mode==='strong'?0.70:mode==='bunt'?1.5:1.55)*(1+cm*0.75)*sk}
+function cursorRX(bat,mode){const cm=(PEN&&G&&G.t[G.half])?condOf(G.t[G.half].id,bat.orig||bat.name).m:0;let sk=1;try{sk=skSit(bat).cur*(mode==='bunt'?1+0.2*(gSk(bat,false)['バント']||0):1)}catch(e){}return(0.068+bat.meet*0.0009)*(DIFF[G.diff]||DIFF.normal).cur*(mode==='strong'?0.64:mode==='bunt'?1.4:1.32)*(1+cm*0.75)*sk}
 // カーソルの縦半径：ミート＝横長の楕円（面積は旧カーソルと同じ）、強振＝小さな円、バント＝従来形
-function cursorRY(rx,mode){return mode==='strong'?rx:mode==='bunt'?rx*0.8:rx*0.8}
+function cursorRY(rx,mode){return mode==='strong'?rx:mode==='bunt'?rx*0.75:rx*0.65}
 function timingWin(){return 0.105*(DIFF[G.diff]||DIFF.normal).ts*(DIFF[G.diff]||DIFF.normal).win}
 function userContact(p,dt,cur,mode,bat){
   const win=timingWin()*(mode==='bunt'?1.8:1),rx=cursorRX(bat,mode),ry=cursorRY(rx,mode);
@@ -5550,7 +5550,7 @@ const MC={};function mat(c){return MC[c]||(MC[c]=new THREE.MeshLambertMaterial({
   const lineM=new THREE.MeshBasicMaterial({color:'#f2f0e6'});
   const bline=(x,z,w,d)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,0.01,d),lineM);m.position.set(x,0.008,z);W.add(m)};
   for(const s of [-1,1]){const cx=s*(0.216+0.15+0.61);bline(cx-0.61,0.1,0.07,1.83);bline(cx+0.61,0.1,0.07,1.83);bline(cx,0.1-0.915,1.22,0.07);bline(cx,0.1+0.915,1.22,0.07)}
-  for(const [x,z] of BASEP.slice(1)){const b=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.08,0.38),white);b.position.set(x,0.04,z);b.rotation.y=Math.PI/4;b.castShadow=true;W.add(b)}
+  for(const [x,z] of BASEP.slice(1)){const b=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.12,1.0),white);b.position.set(x,0.06,z);b.rotation.y=Math.PI/4;b.castShadow=true;W.add(b)}
   const mound=new THREE.Mesh(new THREE.CylinderGeometry(1.0,2.75,0.25,32),mat('#a0704a'));mound.position.set(0,0.125,18.44);mound.receiveShadow=true;W.add(mound);
   const rub=new THREE.Mesh(new THREE.BoxGeometry(0.61,0.04,0.15),white);rub.position.set(0,0.26,18.44);W.add(rub);
 }
@@ -6821,8 +6821,8 @@ function animate(t,dt){_FDT=dt;_FRAME++;
     else tring.visible=false;
     if(p&&U.phase==='flight'&&(userBat()||G.auto)){const st=predStart();if(st<1){const f=window.TROVR!=null?window.TROVR:clamp((t-U.rel)/(U.arrive-U.rel),0,1);
       if(f>=st&&(window.TROVR!=null||t>=U.rel)){predM.visible=true;const e=(f-st)/Math.max(0.01,1-st),sx=p.sx!=null?p.sx:p.tx,sy=p.sy!=null?p.sy:p.ty;
-        predM.position.set(p.tx,p.ty,0.02);const ck=Math.max(1,camera.position.z/9);predM.scale.setScalar((1.5-e*0.2)*ck);predM.material.opacity=0.9+0.1*e;predM.material.color.set('#ffffff');
-        if(Math.hypot(p.tx-sx,p.ty-sy)>0.04){if(predM.material.map!==predTexS){predM.material.map=predTexS;predM.material.needsUpdate=true}predG.visible=true;predG.position.set(sx,sy,0.018);predG.scale.setScalar(1.2*ck);predG.material.opacity=0.85;
+        predM.position.set(p.tx,p.ty,0.02);const ck=Math.max(1,camera.position.z/9);predM.scale.setScalar((0.95-e*0.12)*ck);predM.material.opacity=0.9+0.1*e;predM.material.color.set('#ffffff');
+        if(Math.hypot(p.tx-sx,p.ty-sy)>0.04){if(predM.material.map!==predTexS){predM.material.map=predTexS;predM.material.needsUpdate=true}predG.visible=true;predG.position.set(sx,sy,0.018);predG.scale.setScalar(0.75*ck);predG.material.opacity=0.85;
           const a=predL.geometry.attributes.position;a.setXYZ(0,sx,sy,0.017);a.setXYZ(1,p.tx,p.ty,0.017);a.needsUpdate=true;predL.computeLineDistances();predL.visible=true}else{if(predM.material.map!==predTex){predM.material.map=predTex;predM.material.needsUpdate=true}predG.visible=false;predL.visible=false}}else{predG.visible=false;predL.visible=false}}}
     if(U.phase==='aim'){aimM.visible=true;aimM.position.set(U.aim.x,U.aim.y,0);aimM.scale.setScalar(Math.max(1,camera.position.z/10))}
     if(U.lastMark&&t<U.lastMark.until&&(U.phase==='wait')){markM.visible=true;markM.position.set(U.lastMark.x,U.lastMark.y,0.02);markM.scale.setScalar(Math.max(1.3,camera.position.z/8))}
