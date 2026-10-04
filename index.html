@@ -6168,6 +6168,10 @@ function mcMirror(P){P.pel.x=-P.pel.x;P.ry=-P.ry;P.rz=-P.rz;let t=P.hL;P.hL=P.hR
 function pose(f,kind,ph){const u=f.userData,P=u.P;
   if(kind==='scoop'&&MCD.scoop&&ph!==undefined){mcApply(_pTgt,mcTrack(MCD.scoop,ph,_mcA));if(!u.gloveR)mcMirror(_pTgt)}else
   if(kind==='run')poseRun(_pTgt,ph,u.rv);else copyPose(_pTgt,PS[{catch:'high',idle:'stand'}[kind]||kind]||PS.stand);
+  if(kind==='stand'||kind==='ready'||kind==='idle'||kind==='recv'){ // 待機中の微細な動き（呼吸・体重移動・グラブの揺れ）。静止した人形に見えないように
+    if(u._ip===undefined)u._ip=Math.random()*6.283;const T=now()*(kind==='ready'?1.5:1.0)+u._ip,A=kind==='ready'?1.6:1;
+    _pTgt.pel.y+=Math.sin(T*1.9)*0.006*A;_pTgt.pel.x+=Math.sin(T*0.7)*0.010*A;_pTgt.rz+=Math.sin(T*0.7)*0.018*A;
+    _pTgt.hL.y+=Math.sin(T*1.9+0.6)*0.012;_pTgt.hR.y+=Math.sin(T*1.9+0.9)*0.012;_pTgt.hL.x+=Math.sin(T*0.7)*0.008;_pTgt.hR.x+=Math.sin(T*0.7)*0.008;}
   if(u.pk!==kind){if(u.pk!==undefined){u.pFrom=u.pFrom||newPose();copyPose(u.pFrom,P);u.pT=0}u.pk=kind}
   if(u.pFrom&&u.pT<1){u.pT=Math.min(1,u.pT+_FDT/0.2);const e=u.pT*u.pT*(3-2*u.pT);lerpPose(P,u.pFrom,_pTgt,e)}else copyPose(P,_pTgt);
   applyPose(f,P);return P}
@@ -6819,6 +6823,7 @@ function frame(){
   if(!U.paused)step(t,dt);
   if(U.replay){const tv=replayT(t);animate(tv,dt*U.replay.sp)}else animate(t,dt);
   try{FX.watch(t,dt);FX.update(dt)}catch(e){}
+  try{crowdFx(t,dt)}catch(e){}
   renderer.render(scene,camera);perfTick(raw);
 }
 const keys={};
@@ -10481,6 +10486,29 @@ function renderOffBody(){
     PEN.winterLog=winterLeague(picks,($('#wlLeague2')||{}).value||'dom');renderOff()};
 }
 
+
+/* ===== 観客の歓声アニメ：盛り上がる場面で観客席が弾み、客席のカメラフラッシュが増える。画質「軽量」では止める ===== */
+const CFX={amp:0,until:0,fl:[],t:0};
+function crowdBoost(ms,a){CFX.until=Math.max(CFX.until,performance.now()+ms);CFX.amp=Math.max(CFX.amp,a)}
+try{const AD=AudioDirector,_sc=AD.setCrowd;AD.setCrowd=function(k,ms){try{if(k==='HUGE_CHEER')crowdBoost(ms||4000,1);else if(k==='CHEER')crowdBoost(ms||1500,0.5)}catch(e){}return _sc.apply(this,arguments)}}catch(e){}
+const CFXTEX=(()=>{const [c,g]=cvs(64,64);const r=g.createRadialGradient(32,32,0,32,32,32);r.addColorStop(0,'rgba(255,255,255,1)');r.addColorStop(0.3,'rgba(255,255,240,.6)');r.addColorStop(1,'rgba(255,255,240,0)');g.fillStyle=r;g.fillRect(0,0,64,64);return tex(c)})();
+{const m=new THREE.SpriteMaterial({map:CFXTEX,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,fog:false});
+ for(let i=0;i<18;i++){const sp=new THREE.Sprite(m.clone());sp.visible=false;sp.scale.set(2.2,2.2,1);W.add(sp);CFX.fl.push({sp,life:0})}}
+function crowdFx(t,dt){
+  if(Q.tier==='low'){if(standMat.map.offset.y!==0)standMat.map.offset.y=0;CFX.fl.forEach(f=>f.sp.visible=false);return}
+  const on=performance.now()<CFX.until;if(!on)CFX.amp*=Math.exp(-dt*3);
+  // 歓声中は客席が上下に弾む（テクスチャを微小にずらす）
+  standMat.map.offset.y=CFX.amp>0.02?Math.abs(Math.sin(t*9))*0.0065*CFX.amp:0;
+  // カメラフラッシュ（常時わずか＋歓声中に増える）
+  const rate=0.8+CFX.amp*26;
+  if(Math.random()<rate*dt){const f=CFX.fl.find(q=>q.life<=0);if(f){const o=BOUND.filter(P=>P.o);const P=o[Math.floor(Math.random()*o.length)]||BOUND[0];let nx=P.x,nz=P.z-45;const l=Math.hypot(nx,nz)||1;nx/=l;nz/=l;const d=3+Math.random()*10;
+    f.sp.position.set(P.x+nx*d,FENCE_H+2+Math.random()*7+d*0.5,P.z+nz*d);f.life=0.09+Math.random()*0.06;f.sp.visible=true;const s=1.6+Math.random()*1.8;f.sp.scale.set(s,s,1)}}
+  for(const f of CFX.fl){if(f.life>0){f.life-=dt;if(f.life<=0)f.sp.visible=false}}
+}
+/* ===== 周辺減光（放送画面風）。高画質・標準で表示 ===== */
+{const v=document.createElement('div');v.id='vignette';v.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 48%,rgba(0,0,0,0) 58%,rgba(2,6,16,.38) 100%)';
+ const st=document.getElementById('stage');if(st)st.appendChild(v);window.__vig=v;
+ const _aq=applyQuality;applyQuality=function(){_aq();try{v.style.display=Q.tier==='low'?'none':'block'}catch(e){}};applyQuality()}
 </script>
 <button id="bgmBtn" aria-label="BGM">🔊</button>
 </body>
