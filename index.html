@@ -6315,7 +6315,7 @@ function buildFigures(){
   refreshBatter();lightenShadows();
 }
 /* スマホ：影を落とすのは胴体だけ（手足の影の描画を省いて描画回数を減らす） */
-function lightenShadows(){if(typeof IS_TOUCH==='undefined'||!IS_TOUCH||!FIG)return;FIG.all.forEach(f=>{const body=f.userData&&f.userData.body;f.traverse(o=>{if(o.isMesh&&o.parent!==body&&o!==f.userData.mitt)o.castShadow=false})})}
+function lightenShadows(){if(!FIG)return;const light=(typeof IS_TOUCH!=='undefined'&&IS_TOUCH)||(typeof Q!=='undefined'&&Q.tier==='low');FIG.all.forEach(f=>{const body=f.userData&&f.userData.body;f.traverse(o=>{if(o.isMesh&&o.parent!==body&&o!==f.userData.mitt){if(o.userData._cs0===undefined)o.userData._cs0=o.castShadow;o.castShadow=light?false:o.userData._cs0}})})}
 function refreshBatter(){
   for(let s=0;s<2;s++){if(FIG.bat[s]){W.remove(FIG.bat[s]);FIG.all.splice(FIG.all.indexOf(FIG.bat[s]),1)}}
   const s=G.half,b=curBatter();const f=makeBatterFig(G.t[s],s===1,batsOf(b)==='L',b.num,b.name);W.add(f);FIG.bat[s]=f;FIG.all.push(f);FIG.batFor=b;FIG.batSide=batsOf(b);
@@ -6732,10 +6732,24 @@ let lastF=now();
 /* 描画負荷に応じた解像度の自動調整（スマホで重いときにカクつかないように）。window.PERF_LOCK=true で無効 */
 const PERF={ema:16,n:0,max:Math.min(2,window.devicePixelRatio||1),min:0.75,dpr:Math.min(2,window.devicePixelRatio||1)};
 const IS_TOUCH=('ontouchstart' in window||navigator.maxTouchPoints>0);
-if(IS_TOUCH){try{sun.shadow.mapSize.set(1024,1024);renderer.shadowMap.type=THREE.PCFShadowMap}catch(e){}}
+/* 画質設定：OPT.quality = auto|high|mid|low。PCは高画質、スマホは標準から始め、重ければautoは自動で1段ずつ下げる */
+const Q={tier:null,auto:null,slow:0};
+const QTIER={high:{sh:4096,soft:true,dpr:1.5},mid:{sh:2048,soft:true,dpr:0},low:{sh:1024,soft:false,dpr:1}};
+function applyQuality(){const m=OPT.quality||'auto';const t=m==='auto'?(Q.auto||(IS_TOUCH?'mid':'high')):m;if(!QTIER[t])return;const c=QTIER[t],prev=Q.tier;Q.tier=t;
+  const dpr0=Math.min(2,window.devicePixelRatio||1);PERF.max=c.dpr?Math.min(2,Math.max(c.dpr,t==='low'?1:dpr0)):dpr0;if(t==='low')PERF.max=Math.min(1,dpr0);
+  if(IS_TOUCH&&t==='high')PERF.max=dpr0;
+  const sh=IS_TOUCH?Math.min(c.sh,1024):c.sh;
+  if(sun.shadow.mapSize.x!==sh){sun.shadow.mapSize.set(sh,sh);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}}
+  const ty=c.soft&&!IS_TOUCH?THREE.PCFSoftShadowMap:THREE.PCFShadowMap;
+  if(renderer.shadowMap.type!==ty){renderer.shadowMap.type=ty;scene.traverse(o=>{if(o.material)[].concat(o.material).forEach(x=>x.needsUpdate=true)})}
+  PERF.dpr=Math.min(PERF.max,Math.max(PERF.min,t===prev?PERF.dpr:PERF.max));renderer.setPixelRatio(PERF.dpr);
+  try{lightenShadows()}catch(e){}}
+applyQuality();
 function perfTick(raw){if(window.PERF_LOCK||raw>0.5)return;PERF.ema=PERF.ema*0.94+raw*1000*0.06;if(++PERF.n%90)return;
   if(PERF.ema>23&&PERF.dpr>PERF.min){PERF.dpr=Math.max(PERF.min,+(PERF.dpr-0.25).toFixed(2));renderer.setPixelRatio(PERF.dpr)}
-  else if(PERF.ema<14&&PERF.dpr<PERF.max){PERF.dpr=Math.min(PERF.max,+(PERF.dpr+0.25).toFixed(2));renderer.setPixelRatio(PERF.dpr)}}
+  else if(PERF.ema>26&&(OPT.quality||'auto')==='auto'&&Q.tier!=='low'){if(++Q.slow>=2){Q.slow=0;Q.auto=Q.tier==='high'?'mid':'low';applyQuality()}}
+  else if(PERF.ema<14&&PERF.dpr<PERF.max){PERF.dpr=Math.min(PERF.max,+(PERF.dpr+0.25).toFixed(2));renderer.setPixelRatio(PERF.dpr)}
+  if(PERF.ema<=26)Q.slow=0}
 
 // ===== 令和FX：砂ぼこり・芝片・チョーク粉（打球の着弾・当たり・本塁クロス） =====
 const FX=(()=>{
@@ -9585,7 +9599,7 @@ function renderMenu(){
   m.innerHTML=`<div class="sheet"><h3 class="head">タイム</h3>${lineHTML()}
     <button class="btn primary" id="mResume">試合に戻る</button>
     <button class="btn primary" id="mSub">選手交代（投手・代打・代走・守備）</button>
-    <button class="btn" id="mPred">ボール到達点マーカー：${{auto:'ON（投げた瞬間から表示）',on:'ON（投げた瞬間から表示）',off:'OFF'}[OPT.predict]}</button><button class="btn" id="mGuide">タイミングリング：${OPT.guide?'ON':'OFF'}</button><button class="btn" id="mAssist">カーソル補助：${{auto:'かんたん・ふつう',on:'ON（どの難易度でも）',off:'OFF'}[OPT.assist]}</button><button class="btn" id="mManual">守備の送球先・走塁の指示：${OPT.manualPlay===false?'OFF（すべて自動）':'ON（選ばなければ自動）'}</button><button class="btn" id="mPrev">投球の予想軌道：${OPT.preview?'ON':'OFF'}</button><button class="btn" id="mHelp">操作説明を見る</button>
+    <button class="btn" id="mPred">ボール到達点マーカー：${{auto:'ON（投げた瞬間から表示）',on:'ON（投げた瞬間から表示）',off:'OFF'}[OPT.predict]}</button><button class="btn" id="mGuide">タイミングリング：${OPT.guide?'ON':'OFF'}</button><button class="btn" id="mAssist">カーソル補助：${{auto:'かんたん・ふつう',on:'ON（どの難易度でも）',off:'OFF'}[OPT.assist]}</button><button class="btn" id="mManual">守備の送球先・走塁の指示：${OPT.manualPlay===false?'OFF（すべて自動）':'ON（選ばなければ自動）'}</button><button class="btn" id="mPrev">投球の予想軌道：${OPT.preview?'ON':'OFF'}</button><button class="btn" id="mQual">画質：${{auto:'自動（'+({high:'高',mid:'標準',low:'軽量'}[Q.tier]||'')+'）',high:'高画質',mid:'標準',low:'軽量'}[OPT.quality||'auto']}</button><button class="btn" id="mHelp">操作説明を見る</button>
     <button class="btn" id="mVoice">審判コール（音声）：${OPT.voice?'ON':'OFF'}</button><button class="btn" id="mTrail">変化の軌道ドット：${OPT.trail?'ON':'OFF'}</button><button class="btn" id="mPath">投球後の軌道表示：${OPT.path?'ON':'OFF'}</button><button class="btn" id="mZone">ストライクゾーン表示：${{auto:'自動（難易度）',normal:'通常（外枠）',easy:'EASY（3×3）',practice:'練習（濃い枠）',real:'REAL（極薄）'}[OPT.zone||'auto']}</button>
     <button class="btn" id="mSkip">この回をオートで進める</button>
     <button class="btn" id="mSound">サウンド設定</button>
@@ -9598,7 +9612,7 @@ function renderMenu(){
   $('#mSound').onclick=()=>{m.innerHTML=`<div class="sheet"><h3 class="head">サウンド</h3>${audioSettingsHTML()}<button class="btn primary" id="mSndBack">タイムに戻る</button></div>`;bindAudioSettings(m);$('#mSndBack').onclick=renderMenu};
   $('#mInfo').onclick=()=>{m.innerHTML=`<div class="sheet"><h3 class="head">情報</h3>${gameInfoHTML()}<button class="btn primary" id="mInfoBack">タイムに戻る</button></div>`;$('#mInfoBack').onclick=renderMenu};
   m.querySelectorAll('[data-rel]').forEach(x=>x.onclick=()=>{switchPitcher(f,+x.dataset.rel);ctrlKey='';resumeGame();telop('ピッチャー交代　'+curPitcher().name,'#5fd0ff');emitGameEvent({type:'PCHANGE',pl:curPitcher()});refreshBatter()});
-  $('#mPred').onclick=()=>{OPT.predict={auto:'on',on:'off',off:'auto'}[OPT.predict];saveOpt();renderMenu()};$('#mGuide').onclick=()=>{OPT.guide=!OPT.guide;saveOpt();renderMenu()};$('#mAssist').onclick=()=>{OPT.assist={auto:'on',on:'off',off:'auto'}[OPT.assist];saveOpt();renderMenu()};$('#mManual').onclick=()=>{OPT.manualPlay=OPT.manualPlay===false;saveOpt();renderMenu()};$('#mPrev').onclick=()=>{OPT.preview=!OPT.preview;saveOpt();renderMenu()};$('#mHelp').onclick=()=>{resumeGame();showHelp(true)};
+  $('#mPred').onclick=()=>{OPT.predict={auto:'on',on:'off',off:'auto'}[OPT.predict];saveOpt();renderMenu()};$('#mGuide').onclick=()=>{OPT.guide=!OPT.guide;saveOpt();renderMenu()};$('#mAssist').onclick=()=>{OPT.assist={auto:'on',on:'off',off:'auto'}[OPT.assist];saveOpt();renderMenu()};$('#mManual').onclick=()=>{OPT.manualPlay=OPT.manualPlay===false;saveOpt();renderMenu()};$('#mPrev').onclick=()=>{OPT.preview=!OPT.preview;saveOpt();renderMenu()};$('#mQual').onclick=()=>{OPT.quality={auto:'high',high:'mid',mid:'low',low:'auto'}[OPT.quality||'auto'];if(OPT.quality==='auto')Q.auto=null;saveOpt();applyQuality();renderMenu()};$('#mHelp').onclick=()=>{resumeGame();showHelp(true)};
   $('#mVoice').onclick=()=>{OPT.voice=!OPT.voice;saveOpt();renderMenu()};$('#mTrail').onclick=()=>{OPT.trail=!OPT.trail;saveOpt();renderMenu()};$('#mPath').onclick=()=>{OPT.path=!OPT.path;saveOpt();renderMenu()};$('#mZone').onclick=()=>{const L=['auto','normal','easy','practice','real'];OPT.zone=L[(L.indexOf(OPT.zone||'auto')+1)%L.length];saveOpt();renderMenu()};
   $('#mSub').onclick=()=>renderSub('bat');
   if(false)$('#mPinch').onclick=()=>{const R=G.r[G.half],cur=curBatter();
