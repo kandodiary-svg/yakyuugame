@@ -6251,7 +6251,7 @@ function applyPose(fig,P){
     ik(_sh,ht,LG.ua,LG.fa,_pole,_mid,_end);
     _k1.lerpVectors(_sh,_mid,0.55);setSeg(L['sl'+S],_sh,_k1);setSeg(L['ua'+S],_k1,_mid);L['el'+S].position.copy(_mid);setSeg(L['fa'+S],_mid,_end);
     _dir.copy(_end).sub(_mid).normalize();const gb=u.sk&&u.bat&&P.bat?P.bat:null;if(u.sk){sknLimb(u,s,'arm',_sh,_mid,_end,_dir,gb);sknGrip(u,s,gb?0.9:(u.gp?u.gp[S]:(u.role==='run'?0.55:(u.mitt&&((u.gloveR?'R':'L')===S)?0.45:0.3))))}const hd=L['hd'+S];hd.position.copy(_end);hd.quaternion.setFromUnitVectors(YA,_dir);
-    hd.userData.c=hd.userData.c||new V3();hd.userData.c.copy(_end).addScaledVector(_dir,0.05);if(gb){hd.userData.c.copy(u.sk.fc[s>0?'P':'N']);P.fo=P.fo||{L:new V3(),R:new V3()};const kk=u.Lh?(S==='L'?'R':'L'):S;P.fo[kk].copy(hd.userData.c).sub(_end);if(u.Lh)P.fo[kk].x*=-1}
+    hd.userData.c=hd.userData.c||new V3();hd.userData.c.copy(_end).addScaledVector(_dir,0.05);if(gb){hd.userData.c.copy(u.sk.fc[s>0?'P':'N']);P.fo=P.fo||{L:new V3(),R:new V3()};const kk=u.Lh?(S==='L'?'R':'L'):S;_fo.copy(hd.userData.c).sub(_end);if(u.Lh)_fo.x*=-1;if(_fo.length()>0.2)_fo.setLength(0.2);P.fo[kk].lerp(_fo,0.2)}
   }
   if(u.sk)sknBody(u,b);
   if(u.bat){const bt=u.bat;bt.position.copy(L.hdL.userData.c).lerp(L.hdR.userData.c,0.5);bt.quaternion.setFromUnitVectors(ZA,P.bat)}
@@ -6396,7 +6396,7 @@ function poseBatterP0(P,pre,sw,cy,t,opt){ // pre: 0..2 (構え→テイクバッ
     P.bat=P.bat||new V3();P.bat.copy(_bd);return P}
   return keyed(P,opt.miss?BSW_MISS:BSW,sw);
 }
-const _bd=new V3(),_bm=new V3(),_bv=new V3(),_tg=new V3(),_bk=newPose(),_ks=newPose(),_km=newPose();
+const _bd=new V3(),_bm=new V3(),_bv=new V3(),_tg=new V3(),_bk=newPose(),_ks=newPose(),_km=newPose(),_fo=new V3(),_rbA=newPose(),_rbB=newPose();
 function poseBatterP(P,pre,sw,cy,t,opt){poseBatterP0(P,pre,sw,cy,t,opt);
   if(opt&&opt.bunt)return P;
   P.pl=null;{const o=window.HSO||[0,-0.01,0.3],k=sw==null||sw<0?1-_sm3((pre-1)/0.7):0;if(k>0){P.hL.x+=o[0]*k;P.hL.y+=o[1]*k;P.hL.z+=o[2]*k;P.hR.x+=o[0]*k;P.hR.y+=o[1]*k;P.hR.z+=o[2]*k}}
@@ -6962,7 +6962,14 @@ function batterAnim(BAT,t){
   if(sw!=null&&U.pitch&&U.pitch.p0&&!(userBat()&&U.mode==='bunt')){const p=U.pitch,q=pitchPos(p,p.T);_tg.set(q.x,q.y,Math.max(0,q.z)+0.03);
     if(U.swingMiss||window.MISSOVR){const sg=userBat()?(U.cursor.y>=q.y?1:-1):((p.seed||1)%2<1?1:-1);_tg.y+=0.24*sg}
     W.localToWorld(_tg);BAT.updateWorldMatrix(true,false);BAT.worldToLocal(_tg);if(Lh)_tg.x*=-1;tgt=_tg}
-  const P=poseBatterP(BAT.userData.P,pre,sw,cy,t,{stance:stanceOf(b),miss:!!U.swingMiss||window.MISSOVR,bunt:userBat()&&U.mode==='bunt',cx:cx*(Lh?-1:1),take,tgt});
+  const opt={stance:stanceOf(b),miss:!!U.swingMiss||window.MISSOVR,bunt:userBat()&&U.mode==='bunt',cx:cx*(Lh?-1:1),take,tgt};
+  let rs=null;if(!opt.bunt&&window.SWOVR==null&&window.PREOVR==null){if(sw!=null&&sw>0.45)rs=U.swingAnim+0.45;else if(sw==null&&U.pitch&&U.phase==='wait'&&take>=1)rs=U.arrive+0.3}
+  let P;
+  if(rs!=null&&t>rs){const e=_sm3((t-rs)/0.5),ob=Object.assign({},opt,{take:0,tgt:null}),u=BAT.userData;
+    if(e>=1)P=poseBatterP(u.P,0,null,cy,t,ob);
+    else{_rbA.fo=_rbB.fo=u.P.fo;poseBatterP(_rbA,pre,sw!=null?Math.min(sw,rs-U.swingAnim):null,cy,t,opt);poseBatterP(_rbB,0,null,cy,t,ob);
+      P=u.P;lerpPose(P,_rbA,_rbB,e);P.bat=P.bat||new V3();P.bat.lerpVectors(_rbA.bat,_rbB.bat,e);P.pl=_rbB.pl}}
+  else P=poseBatterP(BAT.userData.P,pre,sw,cy,t,opt);
   if(BAT.userData.Lh){mirrorPose(P);P.bat.x*=-1}
   applyPose(BAT,P);
 }
