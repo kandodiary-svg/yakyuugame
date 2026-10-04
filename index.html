@@ -5980,6 +5980,32 @@ function sknShoe(L,pos){
     for(const i of H.ids){m[i*3]=t[i*3];m[i*3+1]=t[i*3+1];m[i*3+2]=t[i*3+2]}};
   for(let it=0;it<80;it++)pass(0.5)
   for(let i=0;i<L.nv;i++)if(L.reg[i]===5){const k=L.sv[i];pos[i*3]=m[k*3];pos[i*3+1]=m[k*3+1];pos[i*3+2]=m[k*3+2]}}
+// 手の指を曲げる（モーフ）：手首〜指先方向の長さに沿って円弧状に曲げる。半分握り(1)と握り込み(2)の2段階
+function sknHandMorph(k,V){
+  const L=SKN.lib,nv=L.nv,pos=V.pos;V.hm={};
+  for(const sd of['P','N']){const bi=L.BN.indexOf('hand'+sd),B=V.bones['hand'+sd],h=B.h,d=B.dir,sx=sd==='P'?1:-1;
+    const idx=[];for(let i=0;i<nv;i++)if(L.bi[i*4]===bi&&L.reg[i]===6)idx.push(i);
+    const e1=new V3(0,0,1).sub(d.clone().multiplyScalar(d.z)).normalize(),e2=new V3().crossVectors(d,e1).normalize();
+    let sxx=0,syy=0,sxy=0;const mu=[0,0];const T=new V3();
+    for(const i of idx){T.set(pos[i*3]-h.x,pos[i*3+1]-h.y,pos[i*3+2]-h.z);mu[0]+=T.dot(e1);mu[1]+=T.dot(e2)}mu[0]/=idx.length;mu[1]/=idx.length;
+    for(const i of idx){T.set(pos[i*3]-h.x,pos[i*3+1]-h.y,pos[i*3+2]-h.z);const a=T.dot(e1)-mu[0],b=T.dot(e2)-mu[1];sxx+=a*a;syy+=b*b;sxy+=a*b}
+    const th=0.5*Math.atan2(2*sxy,sxx-syy),cs=Math.cos(th),sn=Math.sin(th),c1=new V3().addScaledVector(e1,cs).addScaledVector(e2,sn),c2=new V3().addScaledVector(e1,-sn).addScaledVector(e2,cs);
+    const vA=sxx*cs*cs+2*sxy*sn*cs+syy*sn*sn,vB=sxx*sn*sn-2*sxy*sn*cs+syy*cs*cs;
+    const n=(vA<vB?c1:c2).clone();if(n.x*sx>0)n.negate();
+    B.n=n;
+    const u0=B.len;let amax=0,bc=0,nc=0;
+    for(const i of idx){T.set(pos[i*3]-h.x,pos[i*3+1]-h.y,pos[i*3+2]-h.z);const u=T.dot(d);if(u>u0){amax=Math.max(amax,u-u0);if(u>u0+0.02){bc+=T.dot(n);nc++}}}
+    bc=nc?bc/nc:0;B.bc=bc;
+    const lc=new V3();{let m=0;for(const i of idx){T.set(pos[i*3]-h.x,pos[i*3+1]-h.y,pos[i*3+2]-h.z);const u=T.dot(d);if(u>u0+0.02){lc.add(T.clone().addScaledVector(d,-u).addScaledVector(n,-T.dot(n)));m++}}if(m)lc.multiplyScalar(1/m)}
+    const mk=phi=>{const out=new Float32Array(nv*3),R=amax/phi;
+      for(const i of idx){T.set(pos[i*3]-h.x,pos[i*3+1]-h.y,pos[i*3+2]-h.z);const u=T.dot(d);if(u<=u0)continue;const a=u-u0,b=T.dot(n)-bc;
+        const ph=a/R,r=R-b,a2=r*Math.sin(ph),b2=R-r*Math.cos(ph);
+        const lat=T.clone().addScaledVector(d,-u).addScaledVector(n,-(b+bc));lat.sub(lc).multiplyScalar(1-0.45*Math.min(1,a/amax)).add(lc);
+        const np=new V3().copy(h).addScaledVector(d,u0+a2).addScaledVector(n,bc+b2).add(lat);
+        out[i*3]=np.x-pos[i*3];out[i*3+1]=np.y-pos[i*3+1];out[i*3+2]=np.z-pos[i*3+2]}
+      return new THREE.BufferAttribute(out,3)};
+    B.R2=amax/3.6;V.hm[sd]=[mk(2.0),mk(3.6)]}
+}
 function vm0(k){return SKN.lib.hdr.variants[k]}
 function sknVariant(k){
   if(SKN.vc[k])return SKN.vc[k];
@@ -6019,7 +6045,7 @@ function sknVariant(k){
   const V={pos,nor,uv,si,sw,ao,bones,vm,neck,eyeL,eyeR,hc,hd,
     decal:{yNum:yN-P0.y,zBackNum:surf(yN,true)-0.004,yName:yM-P0.y,zBackName:surf(yM,true)-0.004,yWord:yW-P0.y,zFront:surf(yW,false)+0.004,top:yMax-P0.y},
     shoulder:E('upperarm01.L____head'),hip:E('upperleg01.L____head')};
-  SKN.vc[k]=V;return V}
+  SKN.vc[k]=V;sknHandMorph(k,V);return V}
 // 顔のペイント（目の周り・眉・唇）。皮膚の色は頂点色で付くので、ここは白地に「掛け算」で効く模様だけ描く
 function sknFaceTex(k,hair){
   const key=k+hair;if(SKN.tex[key])return SKN.tex[key];
@@ -6040,8 +6066,8 @@ function sknFaceTex(k,hair){
     g.fillStyle='#ffffff';g.beginPath();g.arc(cx-4,cy-5,2.6,0,7);g.fill()}
   const t=new THREE.CanvasTexture(c);t.anisotropy=4;t.encoding=THREE.sRGBEncoding;SKN.tex[key]=t;return t}
 const SKN_MATS={};
-function sknMaterial(tex){const k=tex?tex.uuid:'n';return SKN_MATS[k]||(SKN_MATS[k]=new THREE.MeshStandardMaterial({vertexColors:true,map:tex||null,roughness:0.78,metalness:0,skinning:true}))}
-const SKN_OUTLINE=(()=>{const m=new THREE.MeshBasicMaterial({color:'#15161c',side:THREE.BackSide,skinning:true});
+function sknMaterial(tex){const k=tex?tex.uuid:'n';return SKN_MATS[k]||(SKN_MATS[k]=new THREE.MeshStandardMaterial({vertexColors:true,map:tex||null,roughness:0.78,metalness:0,skinning:true,morphTargets:true}))}
+const SKN_OUTLINE=(()=>{const m=new THREE.MeshBasicMaterial({color:'#15161c',side:THREE.BackSide,skinning:true,morphTargets:true});
   m.onBeforeCompile=sh=>{sh.vertexShader=sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n transformed += normal*0.0055;')};return m})();
 // 1人ぶんの骨とスキンメッシュを作る。g：figureグループ
 function sknBuild(g,opt,pal,k){
@@ -6054,23 +6080,31 @@ function sknBuild(g,opt,pal,k){
   const sc=C(pal[0]).clone();sc.r=Math.pow(sc.r,2.1);sc.g=Math.pow(sc.g,2.1);sc.b=Math.pow(sc.b,2.1);const isSk=r=>pal[r]===pal[0];
   for(let i=0;i<nv;i++){const c=isSk(L.reg[i])?sc:C(pal[L.reg[i]]||pal[0]),a=V.ao[i];col[i*3]=c.r*a;col[i*3+1]=c.g*a;col[i*3+2]=c.b*a}
   geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  geo.morphAttributes.position=[...V.hm.P,...V.hm.N];geo.morphTargetsRelative=true;
   const ft=sknFaceTex(k,pal[7]);
-  const mesh=new THREE.SkinnedMesh(geo,sknMaterial(ft));mesh.castShadow=true;mesh.frustumCulled=false;mesh.userData.skin=true;
+  const mesh=new THREE.SkinnedMesh(geo,sknMaterial(ft));mesh.updateMorphTargets();mesh.castShadow=true;mesh.frustumCulled=false;mesh.userData.skin=true;
   const bones=[],B={};for(const n of L.BN){const b=new THREE.Bone();b.name=n;const r=V.bones[n];b.position.copy(r.h);b.quaternion.copy(r.r0);bones.push(b);B[n]=b;g.add(b)}
   g.add(mesh);g.updateMatrixWorld(true);
   const skel=new THREE.Skeleton(bones);mesh.bind(skel,mesh.matrixWorld);
-  let ol=null;if(opt.outline!==false){ol=new THREE.SkinnedMesh(geo,SKN_OUTLINE);ol.frustumCulled=false;ol.userData.skin=true;g.add(ol);ol.bind(skel,mesh.matrixWorld)}
-  return {mesh,ol,bones:B,V,k}}
+  let ol=null;if(opt.outline!==false){ol=new THREE.SkinnedMesh(geo,SKN_OUTLINE);ol.updateMorphTargets();ol.frustumCulled=false;ol.userData.skin=true;g.add(ol);ol.bind(skel,mesh.matrixWorld)}
+  return {mesh,ol,bones:B,V,k,fc:{P:new V3(),N:new V3()}}}
 const _kba=new V3(),_kbq=new THREE.Quaternion(),_kbd=new V3(),_kbm=new THREE.Matrix4(),_kbq2=new THREE.Quaternion(),_kYY=new V3(0,1,0);
 function sknAim(bone,rest,H,T,fixLen){
   bone.position.copy(H);_kbd.subVectors(T,H);const l=_kbd.length();if(l<1e-5)return;_kbd.multiplyScalar(1/l);
   _kbq.setFromUnitVectors(rest.dir,_kbd);bone.quaternion.copy(_kbq).multiply(rest.r0);bone.scale.set(1,fixLen?1:l/rest.len,1)}
 // 手足：関節位置（H=付け根、M=ひじ/ひざ、E=手首/足首）から骨を合わせる
-function sknLimb(u,side,kind,H,M,E,extra){const K=u.sk;if(!K)return;const sx=side>0?'P':'N',B=K.bones,R=K.V.bones;
+function sknLimb(u,side,kind,H,M,E,extra,roll){const K=u.sk;if(!K)return;const sx=side>0?'P':'N',B=K.bones,R=K.V.bones;
   if(kind==='leg'){sknAim(B['thigh'+sx],R['thigh'+sx],H,M);sknAim(B['shin'+sx],R['shin'+sx],M,E);
     const f=B['foot'+sx];f.position.copy(E);f.quaternion.setFromAxisAngle(_kYY,extra);f.scale.set(1,1,1)}
   else{sknAim(B['uarm'+sx],R['uarm'+sx],H,M);sknAim(B['farm'+sx],R['farm'+sx],M,E);
-    const h=R['hand'+sx];_kba.copy(extra).multiplyScalar(h.len).add(E);sknAim(B['hand'+sx],h,E,_kba,true)}}
+    const h=R['hand'+sx],hb=B['hand'+sx];_kba.copy(extra).multiplyScalar(h.len).add(E);sknAim(hb,h,E,_kba,true);
+    if(roll&&h.n){_kk.crossVectors(h.dir,h.n).applyQuaternion(_kbq);_kp.copy(roll).addScaledVector(_kbd,-roll.dot(_kbd));if(_kp.lengthSq()>1e-6){_kp.normalize();
+        let ang=Math.atan2(_kbd.dot(_kc.crossVectors(_kk,_kp)),_kk.dot(_kp));if(ang>1.5708)ang-=3.1416;else if(ang<-1.5708)ang+=3.1416;
+        _kq.setFromAxisAngle(_kbd,ang);hb.quaternion.premultiply(_kq);_kbq.premultiply(_kq)}}
+    if(h.n){_kn.copy(h.n).applyQuaternion(_kbq);K.fc[sx].copy(E).addScaledVector(extra,h.len).addScaledVector(_kn,(h.bc||0)+(h.R2||0.02))}}}
+const _kk=new V3(),_kp=new V3(),_kc=new V3(),_kn=new V3(),_kq=new THREE.Quaternion();
+function sknGrip(u,side,g){const K=u.sk;if(!K)return;g=g<0?0:g>1?1:g;const o=side>0?0:2,w1=g<0.5?2*g:2*(1-g),w2=g<0.5?0:2*g-1;
+  for(const M of[K.mesh,K.ol]){if(!M)continue;const t=M.morphTargetInfluences;t[o]=w1;t[o+1]=w2}}
 // 胴と頭：体のグループ(b)と頭のグループ(hd)の姿勢にそのまま合わせる
 function sknBody(u,b){const K=u.sk;if(!K)return;const B=K.bones,R=K.V.bones,hd=u.head;
   b.updateMatrix();_kba.copy(R.body.h).sub(SKN.PEL0).applyMatrix4(b.matrix);B.body.position.copy(_kba);B.body.quaternion.copy(b.quaternion);B.body.scale.set(1,1,1);
@@ -6216,8 +6250,8 @@ function applyPose(fig,P){
     const et=s<0?P.eL:P.eR;if(et)_pole.copy(et).sub(_sh);else _pole.set(0.7*s,-0.55,-0.7).transformDirection(b.matrix);
     ik(_sh,ht,LG.ua,LG.fa,_pole,_mid,_end);
     _k1.lerpVectors(_sh,_mid,0.55);setSeg(L['sl'+S],_sh,_k1);setSeg(L['ua'+S],_k1,_mid);L['el'+S].position.copy(_mid);setSeg(L['fa'+S],_mid,_end);
-    _dir.copy(_end).sub(_mid).normalize();if(u.sk)sknLimb(u,s,'arm',_sh,_mid,_end,_dir);const hd=L['hd'+S];hd.position.copy(_end);hd.quaternion.setFromUnitVectors(YA,_dir);
-    hd.userData.c=hd.userData.c||new V3();hd.userData.c.copy(_end).addScaledVector(_dir,0.05);
+    _dir.copy(_end).sub(_mid).normalize();const gb=u.sk&&u.bat&&P.bat?P.bat:null;if(u.sk){sknLimb(u,s,'arm',_sh,_mid,_end,_dir,gb);sknGrip(u,s,gb?0.9:(u.gp?u.gp[S]:(u.role==='run'?0.55:(u.mitt&&((u.gloveR?'R':'L')===S)?0.45:0.3))))}const hd=L['hd'+S];hd.position.copy(_end);hd.quaternion.setFromUnitVectors(YA,_dir);
+    hd.userData.c=hd.userData.c||new V3();hd.userData.c.copy(_end).addScaledVector(_dir,0.05);if(gb){hd.userData.c.copy(u.sk.fc[s>0?'P':'N']);P.fo=P.fo||{L:new V3(),R:new V3()};P.fo[S].copy(hd.userData.c).sub(_end)}
   }
   if(u.sk)sknBody(u,b);
   if(u.bat){const bt=u.bat;bt.position.copy(L.hdL.userData.c).lerp(L.hdR.userData.c,0.5);bt.quaternion.setFromUnitVectors(ZA,P.bat)}
@@ -6326,7 +6360,8 @@ const BSW_MISS=BSW.slice(0,5).concat([
 const BCON=BSW[3][1],BCON_M=BSW_MISS[3][1];
 // バント：投手に正対し、バットを水平に
 const BBUNT=kp([-0.02,0.86,0.04],0.15,-1.15,[-0.02,1.05,0.28],[0.0,1.08,0.62],[-0.5,0.08,0.22],[0.3,0.08,0.02]);
-function poseBatterP(P,pre,sw,cy,t,opt){ // pre: 0..2 (構え→テイクバック→踏み込み) / sw: スイング開始からの秒
+const PGRIP={st:0.55,ts:0.55,sh:0.55,sk:0.55,scr:0.58,sl:0.62,hs:0.62,sw:0.64,ct:0.6,vs:0.58,sb:0.7,cv:0.75,sc:0.72,dc:0.78,fk:0.36,sf:0.42,pm:0.4,kn:0.88,ch:0.5,cc:0.62};
+function poseBatterP0(P,pre,sw,cy,t,opt){ // pre: 0..2 (構え→テイクバック→踏み込み) / sw: スイング開始からの秒
   opt=opt||{};const dir=_g;
   if(opt.bunt){copyPose(P,BBUNT);const hy=clamp(cy+0.08,0.55,1.3);P.hL.y=hy;P.hR.y=hy+0.02;dir.set(0.08,0.02,1);
     if(sw!=null&&sw>=0){const e=Math.min(1,sw/0.12);P.hL.x-=0.1*e;P.hR.x-=0.1*e;P.pel.z+=0.05*e}
@@ -6361,7 +6396,16 @@ function poseBatterP(P,pre,sw,cy,t,opt){ // pre: 0..2 (構え→テイクバッ�
     P.bat=P.bat||new V3();P.bat.copy(_bd);return P}
   return keyed(P,opt.miss?BSW_MISS:BSW,sw);
 }
-const _bd=new V3(),_bm=new V3(),_bv=new V3(),_tg=new V3();
+const _bd=new V3(),_bm=new V3(),_bv=new V3(),_tg=new V3(),_bk=newPose();
+function poseBatterP(P,pre,sw,cy,t,opt){poseBatterP0(P,pre,sw,cy,t,opt);
+  if(opt&&opt.bunt)return P;
+  if(sw==null||sw<0){const q=1-0.5*Math.min(1,pre);P.pel.y-=0.05*q;P.rx+=0.06*q;const sh=Math.max(0,1-pre*0.8)*0.0+q;for(const v of[P.hL,P.hR,P.eL,P.eR])if(v){v.x+=0.09*q;v.y-=0.06*q;v.z+=0.05*q}}   // 構えは少し膝を曲げて低く
+  else if(sw>0.2){ // 振り終わり：両手をそろえて前肩の後ろへ回す
+    keyed(_bk,opt&&opt.miss?BSW_MISS:BSW,sw);const w=_sm3((sw-0.2)/0.14);
+    P.hL.lerp(_bk.hL,w);P.hR.lerp(_bk.hR,w);if(w>0.3){P.eL=null;P.eR=null}}
+  if(P.bat){_bm.copy(P.hL).add(P.hR).multiplyScalar(0.5);_bv.copy(P.bat).normalize();   // 両手はバットの軸上に並べる
+    P.hL.copy(_bm).addScaledVector(_bv,-0.045);P.hR.copy(_bm).addScaledVector(_bv,0.045);if(P.fo){P.hL.sub(P.fo.L);P.hR.sub(P.fo.R)}}
+  return P}
 function makeBatterFig(T,home,L,num,nm){
   const UF=uniformOf(T,home);const f=makePlayer(UF.jersey,UF.cap,UF.pants,{eth:ethOf(T),helmet:true,flapR:!!L,sleeve:UF.under,gloves:'#f2f2f2',num:num,name:nm,numFg:UF.numFg,numBg:UF.numBg,trim:UF.trim,sock:UF.sock,word:UF.word,wordFg:UF.numFg,wordEdge:UF.numBg,logo:T.short[0],logoCol:lum(UF.cap)>0.6?'#111':'#fff'});
   const bat=new THREE.Mesh(MG.bat,BODYMAT);bat.castShadow=true;f.add(bat);f.userData.bat=bat;f.userData.Lh=L;
@@ -7100,7 +7144,7 @@ function animate(t,dt){_FDT=dt;_FRAME++;
     const k=window.KOVR!=null?window.KOVR:(U.pitch&&(U.phase==='windup'||U.phase==='flight'||(U.phase==='wait'&&t-U.wind<2.6)))?Math.min(1.6,t-U.wind):0;{const pu=pf.userData;if(pu.lastK!=null&&k<pu.lastK-0.2){pu.pFrom=pu.pFrom||newPose();copyPose(pu.pFrom,pu.P);pu.pT=0}pu.lastK=k;
      {if(!(pit.forms&&pit.forms.length>1))pu.fN=pit.form||0;else if(pu.fN==null||k<0.03||!pit.forms.includes(pu.fN))pu.fN=pit.forms[Math.floor(Math.random()*pit.forms.length)]
         let q0=pitcherQuirk(pit);if(pit.qvs&&pit.qvs.length>1)q0=Object.assign({},q0,{variant:(G&&G.bases&&G.bases.some(Boolean))?(pit.qvs.includes(1)?1:0):(pit.qvs.includes(0)?0:1)});   // 走者がいる時はコンパクト、いない時は大きな足上げ
-        posePitcher(pu.P,k,Lp,pu.fN,false,q0)};
+        posePitcher(pu.P,k,Lp,pu.fN,false,q0);{const pt=U.pitch&&U.pitch.type,gm=PGRIP[pt]!=null?PGRIP[pt]:0.55,gt=k<1.0?gm:k<1.3?gm+(0.12-gm)*Math.min(1,(k-1.0)/0.2):0.12;pu.gp=Lp?{L:gt,R:0.45}:{R:gt,L:0.45}}};
      // 投げ終わり→次の投球の構えへは0.45秒かけて戻る（プレートへの瞬間移動をなくす）
      if(pu.pFrom&&pu.pT<1){pu.pT=Math.min(1,pu.pT+dt/0.45);const e=pu.pT*pu.pT*(3-2*pu.pT);lerpPose(pu.P,pu.pFrom,pu.P,e)}
      applyPose(pf,pu.P)}
