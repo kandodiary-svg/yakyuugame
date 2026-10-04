@@ -5967,6 +5967,9 @@ function sknShoe(L,pos){
     for(let i=0;i<L.nv;i++)if(L.reg[i]===5)shoe[L.sv[i]]=1;
     for(let t=0;t<L.nt;t++){const a=L.sv[L.tris[t*3]],b=L.sv[L.tris[t*3+1]],c=L.sv[L.tris[t*3+2]];
       for(const[p,q]of[[a,b],[b,c],[c,a]]){if(shoe[p]){adj[p].add(q);if(!shoe[q])anchor[p]=1}if(shoe[q]){adj[q].add(p);if(!shoe[p])anchor[q]=1}}}
+    const comp=new Int32Array(n).fill(-1),csz=[];for(let i=0;i<n;i++)if(shoe[i]&&comp[i]<0){const st=[i];comp[i]=csz.length;let c=0;while(st.length){const v=st.pop();c++;for(const w of adj[v])if(comp[w]<0&&shoe[w]){comp[w]=comp[i];st.push(w)}}csz.push(c)}
+    const small=new Uint8Array(n);for(let i=0;i<n;i++)if(shoe[i]&&csz[comp[i]]<300)small[i]=1;
+    L._small=small;
     const ids=[];for(let i=0;i<n;i++)if(shoe[i]&&!anchor[i])ids.push(i);
     L._sh={ids,adj:adj.map(s=>[...s]),shoe,n}}
   const H=L._sh,n=H.n,m=new Float32Array(n*3);
@@ -5975,7 +5978,7 @@ function sknShoe(L,pos){
   const pass=lam=>{for(const i of H.ids){const a=H.adj[i];let x=0,y=0,z=0;for(const j of a){x+=m[j*3];y+=m[j*3+1];z+=m[j*3+2]}const c=a.length||1;
       t[i*3]=m[i*3]+lam*(x/c-m[i*3]);t[i*3+1]=m[i*3+1]+lam*(y/c-m[i*3+1]);t[i*3+2]=m[i*3+2]+lam*(z/c-m[i*3+2])}
     for(const i of H.ids){m[i*3]=t[i*3];m[i*3+1]=t[i*3+1];m[i*3+2]=t[i*3+2]}};
-  for(let it=0;it<14;it++)pass(0.5)
+  for(let it=0;it<80;it++)pass(0.5)
   for(let i=0;i<L.nv;i++)if(L.reg[i]===5){const k=L.sv[i];pos[i*3]=m[k*3];pos[i*3+1]=m[k*3+1];pos[i*3+2]=m[k*3+2]}}
 function vm0(k){return SKN.lib.hdr.variants[k]}
 function sknVariant(k){
@@ -5985,11 +5988,15 @@ function sknVariant(k){
   sknShoe(L,pos);
   sknNormals(pos,L,nor);
   // 服：布の厚みぶん外側へふくらませ、細かいしわをつける
-  const off={5:0.013,1:0.0075,2:0.004,3:0.0065,4:0.003,8:0.009};
+  const off={5:0.016,1:0.0075,2:0.004,3:0.0065,4:0.003,8:0.009};
   for(let i=0;i<nv;i++){const r=L.reg[i],d=off[r];if(!d)continue;let w=d;
     if(r===1||r===3){const x=pos[i*3],y=pos[i*3+1],z=pos[i*3+2];w+=0.0016*(Math.sin(y*41+x*23)+Math.sin(z*33-y*21+x*11)+0.6*Math.sin(x*60+y*9))}
     pos[i*3]+=nor[i*3]*w;pos[i*3+1]+=nor[i*3+1]*w;pos[i*3+2]+=nor[i*3+2]*w}
   sknNormals(pos,L,nor);
+  {const H=L._sh,n=H.n,mn=new Float32Array(n*3),tn=new Float32Array(n*3);for(let i=0;i<L.nv;i++)if(L.reg[i]===5){const k=L.sv[i];mn[k*3]=nor[i*3];mn[k*3+1]=nor[i*3+1];mn[k*3+2]=nor[i*3+2]}
+   const ids=[];for(let i=0;i<n;i++)if(H.shoe[i])ids.push(i);
+   for(let it=0;it<30;it++){for(const i of ids){const a=H.adj[i];let x=mn[i*3],y=mn[i*3+1],z=mn[i*3+2];for(const j of a){x+=mn[j*3];y+=mn[j*3+1];z+=mn[j*3+2]}const l=Math.hypot(x,y,z)||1;tn[i*3]=x/l;tn[i*3+1]=y/l;tn[i*3+2]=z/l}for(const i of ids){mn[i*3]=tn[i*3];mn[i*3+1]=tn[i*3+1];mn[i*3+2]=tn[i*3+2]}}
+   for(let i=0;i<L.nv;i++)if(L.reg[i]===5){const k=L.sv[i];nor[i*3]=mn[k*3];nor[i*3+1]=mn[k*3+1];nor[i*3+2]=mn[k*3+2]}}
   const uv=new Float32Array(nv*2);for(let i=0;i<nv*2;i++)uv[i]=L.uv[i]/65535;
   // 目玉：UVの代わりに「正面から見た位置」（正射影）を円盤に貼る。虹彩と瞳孔を正面に描ける
   {const lm=vm0(k).lm;if(lm)for(const sd of[1,-1]){const ids=[];let cx=0,cy=0;for(let i=0;i<nv;i++)if(L.reg[i]===9&&pos[i*3]*sd>0){ids.push(i);cx+=pos[i*3];cy+=pos[i*3+1]}
@@ -6041,7 +6048,7 @@ function sknBuild(g,opt,pal,k){
   const V=sknVariant(k),L=SKN.lib,nv=L.nv;
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position',new THREE.BufferAttribute(V.pos,3));geo.setAttribute('normal',new THREE.BufferAttribute(V.nor,3));geo.setAttribute('uv',new THREE.BufferAttribute(V.uv,2));
-  geo.setAttribute('skinIndex',new THREE.BufferAttribute(V.si,4));geo.setAttribute('skinWeight',new THREE.BufferAttribute(V.sw,4));if(!L._idx){const keep=[];for(let t=0;t<L.nt;t++){const a=L.tris[t*3],b=L.tris[t*3+1],c=L.tris[t*3+2];keep.push(a,b,c)}L._idx=new Uint16Array(keep)}
+  geo.setAttribute('skinIndex',new THREE.BufferAttribute(V.si,4));geo.setAttribute('skinWeight',new THREE.BufferAttribute(V.sw,4));if(!L._idx){const keep=[];for(let t=0;t<L.nt;t++){const a=L.tris[t*3],b=L.tris[t*3+1],c=L.tris[t*3+2];if(L._small&&(L._small[L.sv[a]]||L._small[L.sv[b]]||L._small[L.sv[c]]))continue;keep.push(a,b,c)}L._idx=new Uint16Array(keep)}
   geo.setIndex(new THREE.BufferAttribute(L._idx,1));
   const col=new Float32Array(nv*3),cc={};const C=h=>cc[h]||(cc[h]=new THREE.Color(h));
   const sc=C(pal[0]).clone();sc.r=Math.pow(sc.r,2.1);sc.g=Math.pow(sc.g,2.1);sc.b=Math.pow(sc.b,2.1);const isSk=r=>pal[r]===pal[0];
@@ -6070,7 +6077,7 @@ function sknBody(u,b){const K=u.sk;if(!K)return;const B=K.bones,R=K.V.bones,hd=u
   hd.updateMatrix();_kbm.multiplyMatrices(b.matrix,hd.matrix);B.head.position.setFromMatrixPosition(_kbm);_kbm.decompose(_kba,_kbq2,_kbd);B.head.quaternion.copy(_kbq2);B.head.scale.set(1,1,1)}
 
 SKN.HSK=0.62;
-Promise.resolve().then(()=>sknLoad(window.SKN_B64)).then(ok=>{window.SKN_B64=null;if(ok&&typeof FIG!=='undefined'&&FIG&&typeof G!=='undefined'&&G)try{buildFigures()}catch(e){console.warn(e)}});
+Promise.resolve().then(()=>sknLoad(window.SKN_B64)).then(ok=>{window.SKN_B64=null;if(ok){let k=0;const step=()=>{if(k<12){try{sknVariant(k++)}catch(e){}setTimeout(step,60)}};setTimeout(step,300)}if(ok&&typeof FIG!=='undefined'&&FIG&&typeof G!=='undefined'&&G)try{buildFigures()}catch(e){console.warn(e)}});
 function sknTone(k,h){const t=SKN_TONE[SKN.lib.hdr.variants[k].eth]||SKN_TONE.asian;return t[(h>>>11)%t.length]}
 function ethOf(T){return T&&T.org==='NPB'?'npb':'mlb'}
 
@@ -6144,7 +6151,7 @@ function makePlayer(jersey,cap,pants,opt={}){
     L['hd'+s]=M(MG.hand,opt.gloves||skin);L['sho'+s]=new THREE.Mesh(MG.shoe,BODYMAT);L['sho'+s].castShadow=true;g.add(L['sho'+s])}
   let sk=null;
   if(SK){for(const k in L)L[k].visible=!!(opt.catcher&&/^(kn|sp|so)/.test(k));
-    const pal={0:skin,1:jersey,2:opt.sleeve||skin,3:pants,4:sock,5:'#14151a',6:opt.gloves||skin,7:hair,8:'#1d1d1d',9:'#ffffff'};
+    const pal={0:skin,1:jersey,2:opt.sleeve||skin,3:pants,4:sock,5:'#07080b',6:opt.gloves||skin,7:hair,8:'#1d1d1d',9:'#ffffff'};
     sk=sknBuild(g,opt,pal,SKk)}
   g.userData={body,head,L,P:newPose(),ph:Math.random()*6,numPlane,namePlane,numOpt:opt,sk,hpy:HPY,
     skH:SK?{x:Math.abs(SV.hip.x),y:SV.hip.y,z:SV.hip.z}:null,skS:SK?{x:Math.abs(SV.shoulder.x),y:SV.shoulder.y,z:SV.shoulder.z}:null};
