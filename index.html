@@ -6399,7 +6399,8 @@ function poseBatterP0(P,pre,sw,cy,t,opt){ // pre: 0..2 (構え→テイクバッ
 const _bd=new V3(),_bm=new V3(),_bv=new V3(),_tg=new V3(),_bk=newPose(),_ks=newPose(),_km=newPose();
 function poseBatterP(P,pre,sw,cy,t,opt){poseBatterP0(P,pre,sw,cy,t,opt);
   if(opt&&opt.bunt)return P;
-  P.pl=null;{const o=window.HSO||[0,-0.08,-0.15],k=sw==null||sw<0?1-_sm3((pre-1)/0.7):0;if(k>0){P.hL.x+=o[0]*k;P.hL.y+=o[1]*k;P.hL.z+=o[2]*k;P.hR.x+=o[0]*k;P.hR.y+=o[1]*k;P.hR.z+=o[2]*k}}
+  P.pl=null;{const o=window.HSO||[0,-0.01,0.3],k=sw==null||sw<0?1-_sm3((pre-1)/0.7):0;if(k>0){P.hL.x+=o[0]*k;P.hL.y+=o[1]*k;P.hL.z+=o[2]*k;P.hR.x+=o[0]*k;P.hR.y+=o[1]*k;P.hR.z+=o[2]*k}}
+  if(sw==null||sw<0)P.pl=window.PLS||[0.45,-1,0.05];
   if(sw==null||sw<0){const q=(1-0.5*Math.min(1,pre))*_sm3((pre-1)/0.7);P.pel.y-=0.05*q;P.rx+=0.06*q;const sh=Math.max(0,1-pre*0.8)*0.0+q;for(const v of[P.hL,P.hR,P.eL,P.eR])if(v){v.x+=0.09*q;v.y-=0.06*q;v.z+=0.05*q}}   // 構えは少し膝を曲げて低く
   else if(sw>0.2){ // 振り終わり：両手をそろえて前肩の後ろへ回す
     keyed(_bk,opt&&opt.miss?BSW_MISS:BSW,sw);const w=_sm3((sw-0.2)/0.14);
