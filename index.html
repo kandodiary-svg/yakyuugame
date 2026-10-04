@@ -6251,7 +6251,7 @@ function applyPose(fig,P){
     ik(_sh,ht,LG.ua,LG.fa,_pole,_mid,_end);
     _k1.lerpVectors(_sh,_mid,0.55);setSeg(L['sl'+S],_sh,_k1);setSeg(L['ua'+S],_k1,_mid);L['el'+S].position.copy(_mid);setSeg(L['fa'+S],_mid,_end);
     _dir.copy(_end).sub(_mid).normalize();const gb=u.sk&&u.bat&&P.bat?P.bat:null;if(u.sk){sknLimb(u,s,'arm',_sh,_mid,_end,_dir,gb);sknGrip(u,s,gb?0.9:(u.gp?u.gp[S]:(u.role==='run'?0.55:(u.mitt&&((u.gloveR?'R':'L')===S)?0.45:0.3))))}const hd=L['hd'+S];hd.position.copy(_end);hd.quaternion.setFromUnitVectors(YA,_dir);
-    hd.userData.c=hd.userData.c||new V3();hd.userData.c.copy(_end).addScaledVector(_dir,0.05);if(gb){hd.userData.c.copy(u.sk.fc[s>0?'P':'N']);P.fo=P.fo||{L:new V3(),R:new V3()};P.fo[S].copy(hd.userData.c).sub(_end)}
+    hd.userData.c=hd.userData.c||new V3();hd.userData.c.copy(_end).addScaledVector(_dir,0.05);if(gb){hd.userData.c.copy(u.sk.fc[s>0?'P':'N']);P.fo=P.fo||{L:new V3(),R:new V3()};const kk=u.Lh?(S==='L'?'R':'L'):S;P.fo[kk].copy(hd.userData.c).sub(_end);if(u.Lh)P.fo[kk].x*=-1}
   }
   if(u.sk)sknBody(u,b);
   if(u.bat){const bt=u.bat;bt.position.copy(L.hdL.userData.c).lerp(L.hdR.userData.c,0.5);bt.quaternion.setFromUnitVectors(ZA,P.bat)}
@@ -6371,8 +6371,8 @@ function poseBatterP0(P,pre,sw,cy,t,opt){ // pre: 0..2 (構え→テイクバッ
     if(pre<=1){lerpPose(P,S.st,BLOAD,pre);dir.set(...S.bd).normalize().lerp(BLOAD_D,pre)}
     else{lerpPose(P,BLOAD,BSTRIDE,Math.min(1,pre-1));dir.copy(BSTRIDE_D)}
     if(MCD.swing){ // 構え→踏み込みはモーションキャプチャ（CMU 124_07 Baseball Swing）
-      const tm=pre<=1?1.9+pre*0.45:2.35+Math.min(1,pre-1)*0.27;mcApply(P,mcTrack(MCD.swing,tm,_mcA));
-      const q=1-Math.min(1,pre);if(q>0){P.pel.y+=(S.st.pel.y-STANCE[0].st.pel.y)*q;P.rx+=(S.st.rx-STANCE[0].st.rx)*q;P.ry+=(S.st.ry-STANCE[0].st.ry)*q*0.6}}
+      const tm=pre<=1?1.9+pre*0.45:2.35+Math.min(1,pre-1)*0.27;copyPose(_ks,P);mcApply(P,mcTrack(MCD.swing,tm,_mcA));
+      const q=1-Math.min(1,pre);if(q>0){P.pel.y+=(S.st.pel.y-STANCE[0].st.pel.y)*q;P.rx+=(S.st.rx-STANCE[0].st.rx)*q;P.ry+=(S.st.ry-STANCE[0].st.ry)*q*0.6}{const wk=1-_sm3((pre-1.0)/0.7);if(wk>0){copyPose(_km,P);lerpPose(P,_km,_ks,wk)}}}
     const w=1-Math.min(1,pre);if(w>0){const a=Math.sin((t||0)*2.6);dir.x+=a*0.16*w;dir.z+=Math.cos((t||0)*2.6)*0.1*w;P.hR.y+=a*0.02*w;P.hL.y+=a*0.02*w;P.pel.y+=Math.sin((t||0)*1.3)*0.008}
     if(opt.take>0){const e=opt.take;P.pel.z+=0.03*e;P.rx+=0.08*e;P.hL.y-=0.06*e;P.hR.y-=0.06*e;dir.x-=0.1*e}
     P.bat=P.bat||new V3();P.bat.copy(dir).normalize();return P;
@@ -6396,10 +6396,10 @@ function poseBatterP0(P,pre,sw,cy,t,opt){ // pre: 0..2 (構え→テイクバッ
     P.bat=P.bat||new V3();P.bat.copy(_bd);return P}
   return keyed(P,opt.miss?BSW_MISS:BSW,sw);
 }
-const _bd=new V3(),_bm=new V3(),_bv=new V3(),_tg=new V3(),_bk=newPose();
+const _bd=new V3(),_bm=new V3(),_bv=new V3(),_tg=new V3(),_bk=newPose(),_ks=newPose(),_km=newPose();
 function poseBatterP(P,pre,sw,cy,t,opt){poseBatterP0(P,pre,sw,cy,t,opt);
   if(opt&&opt.bunt)return P;
-  if(sw==null||sw<0){const q=1-0.5*Math.min(1,pre);P.pel.y-=0.05*q;P.rx+=0.06*q;const sh=Math.max(0,1-pre*0.8)*0.0+q;for(const v of[P.hL,P.hR,P.eL,P.eR])if(v){v.x+=0.09*q;v.y-=0.06*q;v.z+=0.05*q}}   // 構えは少し膝を曲げて低く
+  if(sw==null||sw<0){const q=(1-0.5*Math.min(1,pre))*_sm3((pre-1)/0.7);P.pel.y-=0.05*q;P.rx+=0.06*q;const sh=Math.max(0,1-pre*0.8)*0.0+q;for(const v of[P.hL,P.hR,P.eL,P.eR])if(v){v.x+=0.09*q;v.y-=0.06*q;v.z+=0.05*q}}   // 構えは少し膝を曲げて低く
   else if(sw>0.2){ // 振り終わり：両手をそろえて前肩の後ろへ回す
     keyed(_bk,opt&&opt.miss?BSW_MISS:BSW,sw);const w=_sm3((sw-0.2)/0.14);
     P.hL.lerp(_bk.hL,w);P.hR.lerp(_bk.hR,w);if(w>0.3){P.eL=null;P.eR=null}}
