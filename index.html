@@ -1492,6 +1492,179 @@ table td,.yt td,.pn-d,.tr-p em{font-variant-numeric:tabular-nums}
 .ppk-b.cur{border-color:#ffd24a;box-shadow:0 0 0 2px rgba(255,210,74,.5)}
 #app #scr-order .oc-top span.pw-pos{min-width:44px;height:30px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;padding:0 6px}
 #app #scr-order .pw-colhead{position:static}
+
+/* ===== スマホ最適化 v152（縦持ち／横持ち）。PC表示は変更しない ===== */
+html,body{overscroll-behavior:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,select,summary,label,[role=button],.btn,.tile,.tab{touch-action:manipulation}
+#scr-game{-webkit-touch-callout:none}
+@media (orientation:landscape){html{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}}
+
+/* 「投げる」「スイング」：太い装飾フォントだと画数の多い漢字が潰れて読めないので、通常のゴシック体にする */
+#scr-game #ctrl .throw,#scr-game #ctrl .swing{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Zen Kaku Gothic New",system-ui,sans-serif!important;font-weight:900!important}
+/* 試合画面は下の操作ヘルプ用の余白(30px)を使わず、画面いっぱいに表示する（PC・スマホ共通） */
+body:has(#scr-game.active){padding-bottom:0!important}
+body:has(#scr-game.active) #helpBar{display:none!important}
+
+/* チーム選択カード：チーム名が長くても切れないように文字数に合わせて縮める */
+@media (max-width:559px){
+  #app .team.tile .ts{font-size:min(26px,calc(((100vw - 36px)/2 - 60px)/(var(--n,4)*1.04)))!important}
+}
+@media (min-width:560px) and (max-width:759px){
+  #app .team.tile .ts{font-size:min(26px,calc(((100vw - 44px)/3 - 60px)/(var(--n,4)*1.04)))!important}
+}
+
+@media (max-aspect-ratio:1/1),(max-height:520px){
+  /* 🔊：画面内容に重ねず、下の帯(ヘルプバーの位置)に置く。試合中は「タイム」メニューから切り替える */
+  html body #bgmBtn{width:30px!important;height:30px!important;right:8px!important;bottom:env(safe-area-inset-bottom,0px)!important;font-size:15px!important;padding:0!important;line-height:30px;box-shadow:0 1px 4px rgba(0,0,0,.4)!important}
+  html body #bgmBtn::before{content:"";position:absolute;inset:-9px -9px -2px -9px}
+  body:has(#scr-game.active) #bgmBtn{display:none!important}
+  #helpBar{padding-right:50px!important}
+  /* iOSで入力欄をタップしたとき画面が勝手に拡大されないよう16px以上にする */
+  input[type=text],input[type=search],input[type=number],input:not([type]),textarea,select{font-size:max(16px,1em)}
+
+  /* 持ち球パネルは球種カードと重複するので守備中は隠す */
+  #scr-game:has(#ctrl .dpad) #hud #arsenal{display:none}
+  /* カウント(BSO)・走者パネルは読める大きさに。持ち球パネルはその下に置いて重ならないように */
+  #scr-game #hud .hl{transform:none;padding:4px 8px}
+  #hud #hBSO b{color:#e6eefb}
+  #hud #hBSO div{font-size:12px}
+  #scr-game #hud #arsenal{top:122px}
+  /* 操作列のヒント文はタップを邪魔しない（リンクだけ押せる） */
+  #app #scr-game #ctrl .hint{pointer-events:none}
+  #app #scr-game #ctrl .hint a{pointer-events:auto}
+  /* ---- 試合画面：ヘッダー ---- */
+  #app #scr-game #sb{gap:6px;padding:6px 8px 16px}
+  #app #scr-game #sb .ic{width:44px;min-width:44px;height:44px;flex:0 0 44px;border-radius:14px;font-size:20px;padding:0}
+  #app #scr-game #sb .ic.auto,#app #scr-game #sb #bHelp{font-size:13px}
+  #app #scr-game #sb .board{min-width:0;padding:5px 8px;gap:6px;overflow:hidden;white-space:nowrap}
+  /* タイム（メニュー）：「試合に戻る」を常に見える位置に */
+  #menu .sheet #mResume{position:sticky;top:0;z-index:3;box-shadow:0 6px 12px rgba(0,0,0,.35)}
+  #menu .sheet .btn{min-height:44px}
+  #menu.ov{padding:10px}
+
+  /* ---- 試合画面：操作パネルを下に積む（flex）。投げる/スイングを大きく固定 ---- */
+  #app #scr-game #ctrl{position:absolute!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;width:auto!important;height:auto!important;
+    display:flex!important;flex-wrap:wrap;align-content:flex-end;gap:8px;padding:0 8px 8px!important;margin:0!important;pointer-events:none!important;background:none!important;border:0!important}
+  #app #scr-game #ctrl>*{pointer-events:auto}
+
+  /* 球種カード */
+  #app #scr-game #ctrl .dpad{order:1;position:static!important;flex:1 0 100%;width:auto!important;margin:0!important;display:flex!important;gap:6px;
+    overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:2px 1px 4px;-webkit-overflow-scrolling:touch}
+  #app #scr-game #ctrl .dpad::-webkit-scrollbar{display:none}
+  #app #scr-game #ctrl .dpad span{display:none!important}
+  #app #scr-game #ctrl .dpad .dp[data-t=st]{order:-1}
+  #app #scr-game #ctrl .dpad .dp{flex:1 0 68px;min-height:58px;display:grid!important;grid-template-columns:auto 1fr;grid-template-rows:auto 1fr;align-items:center;column-gap:2px;
+    padding:5px 5px 4px!important;font-size:11px!important;line-height:1.15;text-align:left;border-radius:12px!important}
+  #app #scr-game #ctrl .dpad .dp i{grid-column:1;grid-row:1;font-size:17px!important;line-height:1}
+  #app #scr-game #ctrl .dpad .dp em{grid-column:2;grid-row:1;justify-self:end;font-size:8px!important;line-height:1;min-height:0;letter-spacing:-1px}
+  #app #scr-game #ctrl .dpad .dp b.dn{grid-column:1/-1;grid-row:2;align-self:start;font-weight:800;line-height:1.15;margin-top:2px;word-break:break-all}
+
+  /* 投げる／作戦ボタン */
+  #app #scr-game #ctrl .tac{order:2;position:static!important;flex:0 0 auto;margin:0!important;gap:6px;flex-wrap:nowrap;align-items:stretch}
+  #app #scr-game #ctrl .tac span{display:none}
+  #app #scr-game #ctrl .tac button{flex:0 0 auto;min-width:54px;height:52px;padding:0 8px!important;font-size:12.5px;border-radius:12px!important;margin:0;
+    background:rgba(8,16,30,.72)!important;border:1px solid rgba(255,255,255,.35)!important;color:#fff!important;font-weight:800}
+  #app #scr-game #ctrl .tac button.on{background:linear-gradient(180deg,#ffd24a,#f0a91c)!important;color:#2a1c00!important}
+  #app #scr-game #ctrl .tac button:disabled{opacity:.5}
+  #app #scr-game #ctrl .throw,#app #scr-game #ctrl .swing{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Zen Kaku Gothic New",system-ui,sans-serif!important;font-weight:900!important}
+  #app #scr-game #ctrl .throw{order:3;position:static!important;flex:1 1 0;min-width:110px;width:auto!important;max-width:none!important;height:52px;margin:0!important;padding:0!important;font-size:20px!important;letter-spacing:.3em;text-indent:.3em}
+  #app #scr-game #ctrl:has(.dpad) .hint{display:none!important}
+
+  /* 打撃：ミート/強振/バント・ヒント・スイング */
+  #app #scr-game #ctrl .seg{order:1;flex:1 0 100%;display:flex!important;gap:6px;margin:0!important;padding:0}
+  #app #scr-game #ctrl .seg button{flex:1;height:44px;font-size:14px!important;padding:0 4px!important;border-radius:12px!important}
+  #app #scr-game #ctrl .relhint{order:2;flex:1 0 100%;margin:0;padding:8px 10px;font-size:12.5px;line-height:1.4;border-radius:12px;background:rgba(8,16,30,.55);border:1px dashed rgba(255,255,255,.38);color:#fff}
+  #app #scr-game #ctrl .relhint b{color:#ff8a7a}
+  #app #scr-game #ctrl .relhint .rh-l{display:none}
+  #app #scr-game #ctrl .swing{order:2;flex:1 0 100%;position:static!important;width:auto!important;height:64px;margin:0!important;padding:0!important;font-size:22px!important;letter-spacing:.3em;text-indent:.3em}
+  #app #scr-game #ctrl:not(:has(.dpad)) .tac{order:3;flex:1 0 100%;display:flex}
+  #app #scr-game #ctrl:not(:has(.dpad)) .tac button{flex:1;height:44px}
+  #app #scr-game #ctrl:not(:has(.dpad)) .hint{display:block!important;order:4;flex:1 0 100%;position:static!important;max-width:none;margin:0;padding:0;background:none;text-align:center;font-size:11px;line-height:1.2}
+  #app #scr-game #ctrl .hint a{display:inline-block;padding:9px 10px}
+  #app #scr-game #ctrl .hint{color:rgba(255,255,255,.88)!important;text-shadow:0 1px 3px rgba(0,0,0,.85)}
+  #app #scr-game #ctrl .hint a{color:#9fd0ff}
+
+  /* 試合結果 */
+  #result .big-res{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif!important;font-weight:900;letter-spacing:.08em}
+  #result .sheet .btn{min-height:46px}
+  /* 守備の送球先／走塁の指示／オート */
+  #app #scr-game #ctrl .dhead{flex:1 0 100%;order:1;margin:0;text-align:center;color:#fff!important;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+  #app #scr-game #ctrl .ddia{flex:1 0 100%;order:2;width:100%;max-width:360px;margin:0 auto;gap:6px}
+  #app #scr-game #ctrl .dbase{min-height:44px;font-size:17px;border-radius:12px}
+  #app #scr-game #ctrl .drun{flex:1 0 100%;order:2;width:100%;max-width:none;margin:0;gap:10px}
+  #app #scr-game #ctrl .drun button{min-height:56px;font-size:19px}
+  #app #scr-game #ctrl #bManual{flex:1 0 100%;order:5;min-height:48px;margin:0}
+}
+
+/* ===== 縦持ち ===== */
+@media (max-aspect-ratio:1/1){
+  /* 守備中は持ち球パネルが無いので、打者パネルを上へ寄せて打者・ゾーンに重ならないようにする */
+  #scr-game:has(#ctrl .dpad) #hud .hb{top:122px!important}
+  /* 実況・フィードバックは操作パネルの上へ */
+  #scr-game #caster,#scr-game #fb{bottom:76px!important}
+  #scr-game:has(#ctrl .dpad) #caster,#scr-game:has(#ctrl .dpad) #fb{bottom:142px!important}
+  #scr-game:has(#ctrl .seg) #caster,#scr-game:has(#ctrl .seg) #fb{bottom:132px!important}
+  #hud .hb{width:min(300px,calc(100% - 16px))}
+  /* 持ち球パネル（打撃中）は読める大きさに */
+  #hud #arsenal{transform:scale(.82);transform-origin:top left}
+  .ars-row{flex-wrap:wrap;max-width:210px;row-gap:4px}
+}
+
+/* 幅の狭い端末：ヘッダーのスコアボードを詰める */
+@media (max-width:400px) and (max-aspect-ratio:1/1){
+  #app #scr-game #sb{gap:4px;padding-left:6px;padding-right:6px}
+  #app #scr-game #sb .board{gap:4px;padding:5px 6px}
+  #app #scr-game #sb .board .tm{padding:3px 5px;font-size:12px;max-width:72px}
+  #app #scr-game #sb .board .sc{font-size:20px;min-width:20px}
+  #app #scr-game #sb .board .inn{min-width:34px;font-size:11px}
+}
+
+/* ===== 横持ちスマホ ===== */
+@media (min-aspect-ratio:1/1) and (max-height:520px){
+  #app #scr-game.active{display:block!important}
+  #app #scr-game #sb{padding:4px 8px 12px}
+  #scr-game #hud .hl{transform:scale(.9);transform-origin:top left}
+  #scr-game #hud #arsenal{top:114px;transform:scale(.78);transform-origin:top left}
+  #app #scr-game #sb .ic{height:40px;flex-basis:44px}
+  #app #scr-game #ctrl{grid-column:auto!important;grid-row:auto!important;left:auto!important;right:8px!important;width:clamp(172px,30vw,236px)!important;
+    flex-direction:column;flex-wrap:nowrap;align-content:stretch;justify-content:flex-end;gap:6px;padding:0!important}
+  #app #scr-game #ctrl .dpad{order:1;flex:0 0 auto;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;overflow:visible;padding:0;max-height:max(106px,calc(100vh - 276px));max-height:max(106px,calc(100dvh - 276px));overflow-y:auto}
+  #app #scr-game #ctrl .dpad .dp{flex:none;min-height:50px;padding:4px 4px 3px!important;font-size:clamp(9.5px,1.5vw,10.5px)!important}
+  #app #scr-game #ctrl .dpad .dp b.dn{letter-spacing:-.04em}
+  #app #scr-game #ctrl .dpad .dp i{font-size:15px!important}
+  #app #scr-game #ctrl .tac{order:2;flex:0 0 auto;display:flex;gap:5px;width:100%}
+  #app #scr-game #ctrl .tac button{flex:1;min-width:0;height:38px;padding:0 3px!important;font-size:11px;white-space:nowrap}
+  #app #scr-game #ctrl .throw{order:3;flex:0 0 auto;width:100%!important;height:50px;font-size:19px!important;min-width:0}
+  #app #scr-game #ctrl .seg{flex:0 0 auto}
+  #app #scr-game #ctrl .seg button{height:40px;font-size:13px!important}
+  #app #scr-game #ctrl .relhint{flex:0 0 auto;padding:6px 8px;font-size:11.5px}
+  #app #scr-game #ctrl .swing{flex:0 0 auto;height:56px;font-size:20px!important}
+  #app #scr-game #ctrl:not(:has(.dpad)) .tac{flex:0 0 auto}
+  #app #scr-game #ctrl:not(:has(.dpad)) .tac button{height:38px}
+  #app #scr-game #ctrl:not(:has(.dpad)) .hint{flex:0 0 auto;font-size:10.5px}
+  #app #scr-game #ctrl .hint a{padding:7px 8px}
+  #app #scr-game #ctrl .dhead{flex:0 0 auto;font-size:13px}
+  #app #scr-game #ctrl .ddia{flex:0 0 auto;max-width:none}
+  #app #scr-game #ctrl .dbase{min-height:38px;font-size:15px;padding:6px 2px}
+  #app #scr-game #ctrl .drun{flex:0 0 auto}
+  #app #scr-game #ctrl .drun button{min-height:50px;font-size:17px}
+  #app #scr-game #ctrl #bManual{flex:0 0 auto}
+  /* 試合結果：横持ちは「得点表→ボタン→個人成績」の順にコンパクトに */
+  #result.ov{padding:8px}
+  #result .sheet{display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px 8px;padding:10px 14px}
+  #result .sheet>*{flex:1 0 100%;margin:0}
+  #result .big-res{font-size:26px!important;line-height:1.1}
+  #result .sheet>.btn{flex:1 1 30%;order:2;width:auto;font-size:13px;padding:8px 6px;min-height:44px}
+  #result .sheet>.grp,#result .sheet>.grp~.lsw{order:3}
+  #result .ls{font-size:12px}
+  /* タイムメニュー：横持ちは2列にして、スクロール量を減らす */
+  #menu .sheet:has(>#mResume){display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px 10px;padding:12px 14px}
+  #menu .sheet:has(>#mResume)>.head,#menu .sheet:has(>#mResume)>.lsw,#menu .sheet:has(>#mResume)>#mResume{flex:1 0 100%;margin:0}
+  #menu .sheet:has(>#mResume)>.head{margin-bottom:2px}
+  #menu .sheet:has(>#mResume)>.btn{flex:1 1 calc(50% - 5px);width:auto;margin:0;min-height:44px;font-size:13px;padding:8px 6px}
+  /* フィードバック／実況は左のパネルと右の操作列の間に */
+  #scr-game #fb{left:200px!important;right:calc(clamp(172px,30vw,236px) + 20px)!important;bottom:10px!important}
+}
 </style>
 <!-- BBH42 v62: S0-2 年度別/通算成績UI・集計を実装 -->
 </head>
@@ -5470,7 +5643,7 @@ function teamButtons(org,selId,dimId){
   for(const t of list){
     if(t.div!==div){if(open)html+='</div>';div=t.div;html+=`<div class="grp">${div}</div><div class="tgrid">`;open=true}
     const g=grade(t.st),ink2=lum(t.c1)>0.6?'rgba(0,0,0,.6)':'rgba(255,255,255,.75)',ic2=lum(t.c2)>0.6?'#111':'#fff';
-    html+=`<button class="team tile${t.id===selId?' sel':''}${t.id===dimId?' dim':''}" data-id="${t.id}" style="--c1:${t.c1};--c2:${t.c2};--ink:${ink(t.c1)};--ink2:${ic2==='#111'?'rgba(0,0,0,.65)':'rgba(255,255,255,.85)'}" aria-label="${t.name} 戦力${g}"><span class="ts">${t.short}</span><span class="tn">${t.name}</span><span class="tg" style="background:${GCOL[g]}">${g}</span></button>`;
+    html+=`<button class="team tile${t.id===selId?' sel':''}${t.id===dimId?' dim':''}" data-id="${t.id}" style="--n:${String(t.short||"").length||4};--c1:${t.c1};--c2:${t.c2};--ink:${ink(t.c1)};--ink2:${ic2==='#111'?'rgba(0,0,0,.65)':'rgba(255,255,255,.85)'}" aria-label="${t.name} 戦力${g}"><span class="ts">${t.short}</span><span class="tn">${t.name}</span><span class="tg" style="background:${GCOL[g]}">${g}</span></button>`;
   }
   return html+(open?'</div>':'');
 }
@@ -9403,7 +9576,7 @@ function renderPenNew(el){
   $('#penTitle').textContent='新しいシーズン';const N=PUI.new;
   const lgTeams=TEAMS.filter(LEAGUES[N.lg]);
   let h=`<div class="sec">リーグ</div><div class="lg4">${Object.keys(LEAGUES).map(k=>`<button data-lg="${k}" class="${N.lg===k?'on':''}">${k}</button>`).join('')}</div>
-    <div class="sec">自分のチーム</div><div class="tgrid">${lgTeams.map(t=>{const g=grade(t.st);return`<button class="team tile${N.me===t.id?' sel':''}" data-id="${t.id}" style="--c1:${t.c1};--c2:${t.c2};--ink:${ink(t.c1)};--ink2:${lum(t.c2)>0.6?'rgba(0,0,0,.65)':'rgba(255,255,255,.85)'}"><span class="ts">${t.short}</span><span class="tn">${t.name}</span><span class="tg" style="background:${GCOL[g]}">${g}</span></button>`}).join('')}</div>`;
+    <div class="sec">自分のチーム</div><div class="tgrid">${lgTeams.map(t=>{const g=grade(t.st);return`<button class="team tile${N.me===t.id?' sel':''}" data-id="${t.id}" style="--n:${String(t.short||"").length||4};--c1:${t.c1};--c2:${t.c2};--ink:${ink(t.c1)};--ink2:${lum(t.c2)>0.6?'rgba(0,0,0,.65)':'rgba(255,255,255,.85)'}"><span class="ts">${t.short}</span><span class="tn">${t.name}</span><span class="tg" style="background:${GCOL[g]}">${g}</span></button>`}).join('')}</div>`;
   /* 参加チームを自分で選ぶ */
   if(!N.teams)N.teams=null;
   const pool=lgTeams.map(t=>t.id);
@@ -9916,7 +10089,7 @@ function renderControls(){
   const c=$('#ctrl');
   if(mode==='bat'){
     c.innerHTML=`<div class="seg mini"><button data-m="meet" class="${U.mode==='meet'?'on':''}">ミート</button><button data-m="strong" class="${U.mode==='strong'?'on strong':''}">強振</button><button data-m="bunt" class="${U.mode==='bunt'?'on bunt':''}">バント</button></div>
-      ${OPT.swing==='release'?'<div class="relhint">画面に指を置いてカーソルを動かし<br><b>指を離した瞬間にスイング</b></div>':'<button class="swing" id="bSwing">スイング</button>'}
+      ${OPT.swing==='release'?'<div class="relhint"><span class="rh-l">画面に指を置いてカーソルを動かし<br></span><b>指を離した瞬間にスイング</b></div>':'<button class="swing" id="bSwing">スイング</button>'}
       ${tacRowBat()}<div class="hint">操作：<a href="#" id="swMode">${OPT.swing==='release'?'離して打つ（ボタンに切替）':'ボタンで打つ（離して打つに切替）'}</a></div>`;
     c.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{U.mode=b.dataset.m;if(U.tac==='squeeze'&&U.mode!=='bunt')U.tac=null;ctrlKey=''});
     c.querySelectorAll('[data-tac]').forEach(b=>b.onclick=()=>{const v=b.dataset.tac;U.tac=U.tac===v?null:v;if(U.tac==='squeeze')U.mode='bunt';ctrlKey='';
@@ -9931,7 +10104,7 @@ function renderControls(){
     p.pitches.filter(z=>z.t!=='st').forEach(z=>{let i=pref(z);const order=[i,i+3,i-3,i+1,i-1,6,8,0,2,1,7,3,5];let put=false;for(const k of order){if(k>=0&&k<9&&k!==4&&!slot[k]){slot[k]=z;put=true;break}}if(!put)slot.push(z)});   // 9枠を超える球種は下に行を足して並べる
     const ar=['↖','↑','↗','←','●','→','↙','↓','↘'];
     const arw=z=>{if(z.t==='st')return'●';const d=PITCH[z.t],bx=-d.bx*(p.throws==='L'?-1:1);const h=bx>0.3?1:bx<-0.3?-1:0,v=d.by>0.55?1:0;return v?(h>0?'↘':h<0?'↙':'↓'):(h>0?'→':h<0?'←':'↓')};
-    c.innerHTML=`<div class="dpad">${slot.map((z,i)=>z?`<button class="dp${z.t===U.sel?' on':''}" data-t="${z.t}" style="--pc:${PCOL[z.t]}"><i>${arw(z)}</i>${PITCH[z.t].n}<em>${z.lv?'★'.repeat(Math.min(7,z.lv)):''}</em></button>`:'<span></span>').join('')}</div>
+    c.innerHTML=`<div class="dpad">${slot.map((z,i)=>z?`<button class="dp${z.t===U.sel?' on':''}" data-t="${z.t}" style="--pc:${PCOL[z.t]}"><i>${arw(z)}</i><b class="dn">${PITCH[z.t].n}</b><em>${z.lv?'★'.repeat(Math.min(7,z.lv)):''}</em></button>`:'<span></span>').join('')}</div>
       <button class="throw" id="bThrow" ${U.phase==='aim'?'':'disabled'}>投げる</button>${tacRowPit()}<div class="hint">照準＝<b>投げ出す方向</b>。制球が低いほど照準からズレる。変化球はそこから曲がり、黄色い円が最終到達点</div>`;
     c.querySelectorAll('.dp').forEach(b=>b.onclick=()=>{U.sel=b.dataset.t;ctrlKey=''});
     $('#bThrow').onclick=()=>{initAudio();doThrow()};
@@ -10003,12 +10176,14 @@ function renderMenu(){
     <button class="btn" id="mVoice">審判コール（音声）：${OPT.voice?'ON':'OFF'}</button><button class="btn" id="mTrail">変化の軌道ドット：${OPT.trail?'ON':'OFF'}</button><button class="btn" id="mPath">投球後の軌道表示：${OPT.path?'ON':'OFF'}</button><button class="btn" id="mZone">ストライクゾーン表示：${{auto:'自動（難易度）',normal:'通常（外枠）',easy:'EASY（3×3）',practice:'練習（濃い枠）',real:'REAL（極薄）'}[OPT.zone||'auto']}</button>
     <button class="btn" id="mSkip">この回をオートで進める</button>
     <button class="btn" id="mSound">サウンド設定</button>
+    <button class="btn" id="mBgm">BGM：${(document.getElementById('bgmBtn')||{}).textContent==='🔇'?'OFF':'ON'}（タップで切替）</button>
     <button class="btn" id="mMocap">投手フォーム：${MOCAP.on?'骨格表示（試作）':{mc:'モーションキャプチャ',illust:'簡易',mocap:'骨格式(旧)',classic:'従来'}[pitchFormMode()]}</button>
     <button class="btn" id="mInfo">情報（特殊能力・球数・疲労・調子）</button>
     <button class="btn" id="mBox">打撃成績を見る</button>
     <button class="btn" id="mQuit">試合をやめる</button></div>`;
   $('#mResume').onclick=resumeGame;
   $('#mMocap').onclick=()=>{const m=pitchFormMode();if(MOCAP.on){mocapSetOn(false);setPitchFormMode('mc')}else if(m==='mc')setPitchFormMode('illust');else if(m==='illust'||m==='mocap')setPitchFormMode('classic');else mocapSetOn(true);renderMenu()};
+  $('#mBgm').onclick=()=>{const b=document.getElementById('bgmBtn');if(b)b.click();renderMenu()};
   $('#mSound').onclick=()=>{m.innerHTML=`<div class="sheet"><h3 class="head">サウンド</h3>${audioSettingsHTML()}<button class="btn primary" id="mSndBack">タイムに戻る</button></div>`;bindAudioSettings(m);$('#mSndBack').onclick=renderMenu};
   $('#mInfo').onclick=()=>{m.innerHTML=`<div class="sheet"><h3 class="head">情報</h3>${gameInfoHTML()}<button class="btn primary" id="mInfoBack">タイムに戻る</button></div>`;$('#mInfoBack').onclick=renderMenu};
   m.querySelectorAll('[data-rel]').forEach(x=>x.onclick=()=>{switchPitcher(f,+x.dataset.rel);ctrlKey='';resumeGame();telop('ピッチャー交代　'+curPitcher().name,'#5fd0ff');emitGameEvent({type:'PCHANGE',pl:curPitcher()});refreshBatter()});
