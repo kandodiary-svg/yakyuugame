@@ -6251,7 +6251,7 @@ function applyPose(fig,P){
   try{aimHead(fig,u,b)}catch(e){}
   for(const s of [-1,1]){const S=s<0?'L':'R';
     if(u.skH)_hp.set(u.skH.x*s,u.skH.y,u.skH.z);else _hp.set(0.095*s,-0.04,0);_hp.applyMatrix4(b.matrix);
-    const ft=s<0?P.fL:P.fR;if(ft.y<0.07)ft.y=0.07;
+    const ft=s<0?P.fL:P.fR;{const gm=ft.gm!=null?ft.gm:0.07;if(ft.y<gm)ft.y=gm}
     _pole.set(Math.sin(P.ry)+0.08*s,0.1,Math.cos(P.ry));
     ik(_hp,ft,LG.th,LG.sh,_pole,_mid,_end);setSeg(L['th'+S],_hp,_mid);L['kn'+S].position.copy(_mid);
     _k1.lerpVectors(_mid,_end,0.38);setSeg(L['sp'+S],_mid,_k1);setSeg(L['so'+S],_k1,_end);
@@ -6365,6 +6365,17 @@ const _rlo={ph:0,w:0,sg:1};
 function phEval(K,k){const n=K.length,R=0.0174533;if(k<=K[0][0])return K[0][1]*R;if(k>=K[n-1][0])return K[n-1][1]*R;
   let i=1;while(i<n-1&&K[i][0]<k)i++;const a=K[Math.max(0,i-2)],b=K[i-1],c=K[i],d=K[Math.min(n-1,i+1)],e=(k-b[0])/(c[0]-b[0]);
   return crsN(a[1],b[1],c[1],d[1],e,a[0],b[0],c[0],d[0])*R}
+// 足の接地：マウンドの傾斜に足裏を合わせ、脚が届く高さまで腰を落とす（投手のみ。モーキャプの腰が高く、着地足が浮いていた）
+const _gE=new THREE.Euler(),_gM=new THREE.Matrix4(),_gH=new V3();
+function moundH(gx,gz){const r=Math.hypot(gx,gz-18.44);return r<=1?0.25:r>=2.75?0:0.25*(2.75-r)/1.75}
+function mcGround(P,k){
+  for(const S of ['fL','fR']){const F=P[S],dh=0.25-moundH(-F.x,18.44-F.z),pl=1-Math.max(0,Math.min(1,(F.y-0.09)/0.12));F.y-=dh*pl;F.gm=0.07-dh}
+  _gE.set(P.rx,P.ry,P.rz,'YXZ');_gM.makeRotationFromEuler(_gE);const Lm=(LG.th+LG.sh)*(window.LEGK||0.985);let D=0;
+  for(const s of [-1,1]){const F=s<0?P.fL:P.fR;_gH.set(0.106*s,-0.03,0).applyMatrix4(_gM).add(P.pel);
+    const dx=F.x-_gH.x,dz=F.z-_gH.z,need=_gH.y-F.y-Math.sqrt(Math.max(0,Lm*Lm-dx*dx-dz*dz)),g=1-Math.max(0,Math.min(1,(F.y-0.1)/0.4));
+    if(need>0&&g>0)D=Math.max(D,need*g)}
+  D=Math.min(D,window.DMAX||0.22)*(k<0.3?1:k<0.5?1-_sm3((k-0.3)/0.2):k<0.78?0:_sm3((k-0.78)/0.14));if(D>0){P.pel.y-=D;P.hL.y-=D;P.hR.y-=D;if(P.eL)P.eL.y-=D;if(P.eR)P.eR.y-=D}
+  P.gdp=D}
 function armEval(K,k,o){
   const n=K.length;
   if(k<=K[0][0]){for(let j=0;j<7;j++)o[j]=K[0][j+1];return o}
@@ -6416,9 +6427,9 @@ function mcPitch(P,k,variant,form){const T=MCD[variant?'p1':'p0'];const sec=T.re
   mcArm(P,k,f);mcGlove(P,k);
   return P}
 function mcQuirk(P,k,q){
-  const ws=k<0.35?0:k<0.7?(k-0.35)/0.35:1,sdm=q.stride*(window.STRM||1.28);if(ws>0){const f=(sdm-1)*ws,dz=P.pel.z*f*0.7;P.fL.z*=1+f;P.pel.z+=dz;P.hL.z+=dz;P.hR.z+=dz;if(P.eL)P.eL.z+=dz;if(P.eR)P.eR.z+=dz}
+  const ws=k<0.35?0:k<0.7?(k-0.35)/0.35:1,sdm=q.stride*(window.STRM||1.22);if(ws>0){const f=(sdm-1)*ws,dz=P.pel.z*f*(window.PZK||1.2);P.fL.z*=1+f;P.pel.z+=dz;P.hL.z+=dz;P.hR.z+=dz;if(P.eL)P.eL.z+=dz;if(P.eR)P.eR.z+=dz}
   const wr=k<0.72?0:k<0.9?(k-0.72)/0.18:k<1.08?1:k<1.3?1-(k-1.08)/0.22:0;if(wr>0&&q.slot){P.hR.y+=q.slot*0.9*wr;P.hR.x-=q.slot*0.5*wr;if(P.eR)P.eR.y+=q.slot*0.5*wr}
-  return P}
+  mcGround(P,k);return P}
 function poseRun(P,ph,v){
   if(typeof MCD!=='undefined'&&v!=null){const u=ph/6.2832,w=runMix(v);copyPose(P,PS.stand);mcCycle(MCD.jog,u,_mcA);mcCycle(MCD.sprint,u,_mcB);for(let k=0;k<MCF;k++)_mcA[k]+=(_mcB[k]-_mcA[k])*w;return mcApply(P,_mcA)}
   const s=Math.sin(ph),c=Math.cos(ph);copyPose(P,PS.stand);
