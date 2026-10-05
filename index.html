@@ -5783,7 +5783,7 @@ function newPose(){return{pel:new V3(0,0.95,0),rx:0,ry:0,rz:0,hL:new V3(-0.28,0.
 function copyPose(o,P){o.eL=P.eL?(o.eL||new V3()).copy(P.eL):null;o.eR=P.eR?(o.eR||new V3()).copy(P.eR):null;o.pel.copy(P.pel);o.rx=P.rx;o.ry=P.ry;o.rz=P.rz;o.hL.copy(P.hL);o.hR.copy(P.hR);o.fL.copy(P.fL);o.fR.copy(P.fR);return o}
 function lerpPose(o,A,B,e){if(A.eL&&B.eL)(o.eL||(o.eL=new V3())).lerpVectors(A.eL,B.eL,e);else o.eL=null;if(A.eR&&B.eR)(o.eR||(o.eR=new V3())).lerpVectors(A.eR,B.eR,e);else o.eR=null;o.pel.lerpVectors(A.pel,B.pel,e);o.rx=A.rx+(B.rx-A.rx)*e;o.ry=A.ry+(B.ry-A.ry)*e;o.rz=A.rz+(B.rz-A.rz)*e;
   o.hL.lerpVectors(A.hL,B.hL,e);o.hR.lerpVectors(A.hR,B.hR,e);o.fL.lerpVectors(A.fL,B.fL,e);o.fR.lerpVectors(A.fR,B.fR,e);return o}
-function mirrorPose(P){for(const k of ['pel','hL','hR','fL','fR'])P[k].x*=-1;if(P.eL)P.eL.x*=-1;if(P.eR)P.eR.x*=-1;let t=P.hL;P.hL=P.hR;P.hR=t;t=P.fL;P.fL=P.fR;P.fR=t;t=P.eL;P.eL=P.eR;P.eR=t;P.ry*=-1;P.rz*=-1;return P}
+function mirrorPose(P){for(const k of ['pel','hL','hR','fL','fR'])P[k].x*=-1;if(P.eL)P.eL.x*=-1;if(P.eR)P.eR.x*=-1;let t=P.hL;P.hL=P.hR;P.hR=t;t=P.fL;P.fL=P.fR;P.fR=t;t=P.eL;P.eL=P.eR;P.eR=t;P.ry*=-1;P.rz*=-1;if(P.prs==='R')P.prs='L';return P}
 const kp=(pel,rx,ry,hL,hR,fL,fR)=>({pel:new V3(...pel),rx,ry,rz:0,hL:new V3(...hL),hR:new V3(...hR),fL:new V3(...fL),fR:new V3(...fR)});
 const crs=(a,b,c,d,t)=>{const t2=t*t,t3=t2*t;return 0.5*(2*b+(c-a)*t+(2*a-5*b+4*c-d)*t2+(3*b-a-3*c+d)*t3)};
 const crsN=(a,b,c,d,e,t0,t1,t2,t3)=>{const e2=e*e,e3=e2*e,h=t2-t1,m1=(t2>t0?(c-a)/(t2-t0):0)*h,m2=(t3>t1?(d-b)/(t3-t1):0)*h;return(2*e3-3*e2+1)*b+(e3-2*e2+e)*m1+(-2*e3+3*e2)*c+(e3-e2)*m2};
@@ -6098,11 +6098,23 @@ function sknLimb(u,side,kind,H,M,E,extra,roll){const K=u.sk;if(!K)return;const s
     const f=B['foot'+sx];f.position.copy(E);f.quaternion.setFromAxisAngle(_kYY,extra);f.scale.set(1,1,1)}
   else{sknAim(B['uarm'+sx],R['uarm'+sx],H,M);sknAim(B['farm'+sx],R['farm'+sx],M,E);
     const h=R['hand'+sx],hb=B['hand'+sx];_kba.copy(extra).multiplyScalar(h.len).add(E);sknAim(hb,h,E,_kba,true);
-    if(roll&&h.n){_kk.crossVectors(h.dir,h.n).applyQuaternion(_kbq);_kp.copy(roll).addScaledVector(_kbd,-roll.dot(_kbd));if(_kp.lengthSq()>1e-6){_kp.normalize();
+    if(roll&&roll.ph!==undefined&&h.n){ // 投手：手のひらの向きを「ひじの曲がり面」基準の回内外角度で指定する（0=手のひらが腕の内側、90°=握手の向き、180°=手のひらが外側）。前腕と手の向きを直接決める
+      _kf.subVectors(E,M).normalize();_ku.subVectors(M,H).normalize();_kt.crossVectors(_ku,_kf);const lb=_kt.length();
+      const we=roll.w*(lb<0.06?0:lb>0.22?1:(lb-0.06)/0.16);
+      if(we>0){_kt.multiplyScalar(roll.sg/lb);_kc2.copy(_ku).addScaledVector(_kf,-_ku.dot(_kf));const l2=_kc2.length();
+        if(l2>1e-4){_kc2.multiplyScalar(-1/l2);_kp.copy(_kc2).multiplyScalar(Math.cos(roll.ph)).addScaledVector(_kt,Math.sin(roll.ph)).normalize();
+          sknAlign(_kq2b,h.dir,h.n,_kbd,_kp);_kq.copy(_kbq).slerp(_kq2b,we);_kbq.copy(_kq);hb.quaternion.copy(_kq).multiply(h.r0);
+          const rf=R['farm'+sx],fb=B['farm'+sx];sknAlign(_kq2b,rf.dir,h.n,_kbd,_kp);_kq2b.multiply(rf.r0);fb.quaternion.slerp(_kq2b,we)}}}
+    else if(roll&&h.n){_kk.crossVectors(h.dir,h.n).applyQuaternion(_kbq);_kp.copy(roll).addScaledVector(_kbd,-roll.dot(_kbd));if(_kp.lengthSq()>1e-6){_kp.normalize();
         let ang=Math.atan2(_kbd.dot(_kc.crossVectors(_kk,_kp)),_kk.dot(_kp));if(ang>1.5708)ang-=3.1416;else if(ang<-1.5708)ang+=3.1416;
         _kq.setFromAxisAngle(_kbd,ang);hb.quaternion.premultiply(_kq);_kbq.premultiply(_kq)}}
     if(h.n){_kn.copy(h.n).applyQuaternion(_kbq);K.fc[sx].copy(E).addScaledVector(extra,h.len).addScaledVector(_kn,(h.bc||0)+(h.R2||0.02))}}}
 const _kk=new V3(),_kp=new V3(),_kc=new V3(),_kn=new V3(),_kq=new THREE.Quaternion();
+const _kf=new V3(),_ku=new V3(),_kt=new V3(),_kc2=new V3(),_kq2b=new THREE.Quaternion();
+const _am1=new THREE.Matrix4(),_am2=new THREE.Matrix4(),_ac0=new V3(),_an0=new V3(),_ac1=new V3();
+// 基準姿勢の(方向d0, 向きn0)を、(d1,n1)に合わせる回転（n1はd1に垂直な単位ベクトル）
+function sknAlign(out,d0,n0,d1,n1){_an0.copy(n0).addScaledVector(d0,-n0.dot(d0)).normalize();_ac0.crossVectors(d0,_an0);_ac1.crossVectors(d1,n1);
+  _am2.makeBasis(d0,_an0,_ac0).transpose();_am1.makeBasis(d1,n1,_ac1).multiply(_am2);return out.setFromRotationMatrix(_am1)}
 function sknGrip(u,side,g){const K=u.sk;if(!K)return;g=g<0?0:g>1?1:g;const o=side>0?0:2,w1=g<0.5?2*g:2*(1-g),w2=g<0.5?0:2*g-1;
   for(const M of[K.mesh,K.ol]){if(!M)continue;const t=M.morphTargetInfluences;t[o]=w1;t[o+1]=w2}}
 // 胴と頭：体のグループ(b)と頭のグループ(hd)の姿勢にそのまま合わせる
@@ -6250,7 +6262,7 @@ function applyPose(fig,P){
     const et=s<0?P.eL:P.eR;if(et)_pole.copy(et).sub(_sh);else if(P.pl)_pole.set(P.pl[0]*s,P.pl[1],P.pl[2]).transformDirection(b.matrix);else _pole.set(0.7*s,-0.55,-0.7).transformDirection(b.matrix);
     ik(_sh,ht,LG.ua,LG.fa,_pole,_mid,_end);
     _k1.lerpVectors(_sh,_mid,0.55);setSeg(L['sl'+S],_sh,_k1);setSeg(L['ua'+S],_k1,_mid);L['el'+S].position.copy(_mid);setSeg(L['fa'+S],_mid,_end);
-    _dir.copy(_end).sub(_mid).normalize();const gb=u.sk&&u.bat&&P.bat?P.bat:null;if(u.sk){sknLimb(u,s,'arm',_sh,_mid,_end,_dir,gb);sknGrip(u,s,gb?0.9:(u.gp?u.gp[S]:(u.role==='run'?0.55:(u.mitt&&((u.gloveR?'R':'L')===S)?0.45:0.3))))}const hd=L['hd'+S];hd.position.copy(_end);hd.quaternion.setFromUnitVectors(YA,_dir);
+    _dir.copy(_end).sub(_mid).normalize();const gb=u.sk&&u.bat&&P.bat?P.bat:null;if(u.sk){sknLimb(u,s,'arm',_sh,_mid,_end,_dir,gb||(P.prf===_FRAME&&P.prs===S?(_rlo.ph=P.prp,_rlo.w=P.prw,_rlo.sg=s,_rlo):null));sknGrip(u,s,gb?0.9:(u.gp?u.gp[S]:(u.role==='run'?0.55:(u.mitt&&((u.gloveR?'R':'L')===S)?0.45:0.3))))}const hd=L['hd'+S];hd.position.copy(_end);hd.quaternion.setFromUnitVectors(YA,_dir);
     hd.userData.c=hd.userData.c||new V3();hd.userData.c.copy(_end).addScaledVector(_dir,0.05);if(gb){hd.userData.c.copy(u.sk.fc[s>0?'P':'N']);P.fo=P.fo||{L:new V3(),R:new V3()};const kk=u.Lh?(S==='L'?'R':'L'):S;_fo.copy(hd.userData.c).sub(_end);if(u.Lh)_fo.x*=-1;if(_fo.length()>0.2)_fo.setLength(0.2);P.fo[kk].lerp(_fo,0.2)}
   }
   if(u.sk)sknBody(u,b);
@@ -6282,6 +6294,14 @@ function runRate(v){const w=runMix(v),D=MCD.jog.D*(1-w)+MCD.sprint.D*w;return 6.
 let _pkT=null;const _mcT0={t0:0,fps:60,d:null};
 /* ===== 投げ腕：肩を基準にした手の軌道（右投げ基準）。座標は「肩のラインに沿った体の向き」の枠：x=外向き(投げ腕側), y=上, z=体の前。
    キー=[k, 手x,y,z, 肘の向きx,y,z, m(0=肩のライン基準→1=本塁方向基準)]。腕の全長は0.55なので手は0.53以内（リリース付近だけほぼ伸ばす） ===== */
+const GLK=[
+  [0.82,0.43,0.01,0.15, 0.32,0.13,-0.94, 0],
+  [0.88,0.29,0.05,0.14, 0.47,-0.31,-0.83, 0.0],
+  [0.94,0.08,-0.09,0.13, 0.37,-0.64,-0.67, 0.3],
+  [0.98,-0.06,-0.15,0.12, 0.37,-0.66,-0.65, 0.6],
+  [1.04,-0.08,-0.17,0.12, 0.38,-0.66,-0.65, 0.8],
+  [1.12,-0.08,-0.18,0.13, 0.39,-0.64,-0.66, 0.85],
+  [1.2,-0.05,-0.22,0.15, 0.40,-0.58,-0.71, 0.85]];
 const ARMK=[[
   [0.5,-0.14,-0.18,0.38, -0.57,-0.64,-0.51, 0],
   [0.6,0.11,-0.41,0.10, -0.09,-0.26,-0.96, 0],
@@ -6334,6 +6354,17 @@ const ARMK=[[
   [1.22,0.03,-0.46,0.21, 1.00,0.03,-0.06, 0.7],
   [1.3,-0.08,-0.45,0.11, 0.97,-0.13,0.19, 0.85]]];
 const _aE=new THREE.Euler(),_aR=new THREE.Matrix4(),_aS=new V3(),_aX=new V3(),_aO=[0,0,0,0,0,0,0],_aT=new V3(),_aP=new V3(),_aM=new V3(),_aN=new V3();
+// 手のひらの向き：回内外の角度[度]（0=手のひらが腕の内側、90=握手の向き、180=手のひらが外側）。構え→テイクバック(ボールを本塁から隠す)→リリースで本塁向き→フォロースルーで下向き
+const PHK=[[
+  [0.82,0],[0.86,-15],[0.9,-10],[0.94,20],[0.965,45],[0.985,75],[1.0,105],[1.03,135],[1.08,160],[1.14,175],[1.22,175]],
+ [
+  [0.82,0],[0.86,-15],[0.9,-10],[0.94,20],[0.965,45],[0.985,75],[1.0,105],[1.03,135],[1.08,160],[1.14,175],[1.22,175]],
+ [
+  [0.82,0],[0.86,-15],[0.9,-10],[0.94,20],[0.965,45],[0.985,75],[1.0,105],[1.03,135],[1.08,160],[1.14,175],[1.22,175]]];
+const _rlo={ph:0,w:0,sg:1};
+function phEval(K,k){const n=K.length,R=0.0174533;if(k<=K[0][0])return K[0][1]*R;if(k>=K[n-1][0])return K[n-1][1]*R;
+  let i=1;while(i<n-1&&K[i][0]<k)i++;const a=K[Math.max(0,i-2)],b=K[i-1],c=K[i],d=K[Math.min(n-1,i+1)],e=(k-b[0])/(c[0]-b[0]);
+  return crsN(a[1],b[1],c[1],d[1],e,a[0],b[0],c[0],d[0])*R}
 function armEval(K,k,o){
   const n=K.length;
   if(k<=K[0][0]){for(let j=0;j<7;j++)o[j]=K[0][j+1];return o}
@@ -6345,6 +6376,8 @@ function armEval(K,k,o){
 // 肩の位置から投げ腕の手と肘の向きを作る（体の回転・足はモーキャプのまま）。ここは右投げ基準で、左投げは後でposePitcherが左右反転する
 function mcArm(P,k,f){
   const w=k<0.5?0:k<0.64?_sm3((k-0.5)/0.14):k<1.3?1:k<1.52?1-_sm3((k-1.3)/0.22):0;if(w<=0)return;
+  {const pw=k<0.74?0:k<0.82?_sm3((k-0.74)/0.08):k<1.2?1:k<1.4?1-_sm3((k-1.2)/0.2):0;
+   if(pw>0){P.prp=phEval((window.PHK_OVR||PHK)[f]||PHK[0],k);P.prw=pw;P.prs='R';P.prf=_FRAME}}
   const K=(window.ARMK_OVR||ARMK)[f]||ARMK[0];armEval(K,k,_aO);
   _aE.set(P.rx,P.ry,P.rz,'YXZ');_aR.makeRotationFromEuler(_aE);
   _aX.set(1,0,0).applyMatrix4(_aR);const al=Math.atan2(_aX.z,_aX.x)*(1-_aO[6]),ca=Math.cos(al),sa=Math.sin(al);
@@ -6356,9 +6389,31 @@ function mcArm(P,k,f){
   _aP.lerp(_aT,w);
   P.hR.x+=(hx-P.hR.x)*w;P.hR.y+=(hy-P.hR.y)*w;P.hR.z+=(hz-P.hR.z)*w;
   ik(_aS,P.hR,LG.ua,LG.fa,_aP,_aM,_aN);(P.eR||(P.eR=new V3())).copy(_aM)}
+
+// グラブ側の腕：投げる瞬間に肘を畳んで胸の前へ引き込む（腕を開いたまま振り下ろさない）。右投げ基準（左投げは反転）
+function armEvalG(k,o){const K=GLK,n=K.length;
+  if(k<=K[0][0]){for(let j=0;j<7;j++)o[j]=K[0][j+1];return o}
+  if(k>=K[n-1][0]){for(let j=0;j<7;j++)o[j]=K[n-1][j+1];return o}
+  let i=1;while(i<n-1&&K[i][0]<k)i++;
+  const a=K[Math.max(0,i-2)],b=K[i-1],c=K[i],d=K[Math.min(n-1,i+1)],e=(k-b[0])/(c[0]-b[0]);
+  for(let j=0;j<7;j++)o[j]=crsN(a[j+1],b[j+1],c[j+1],d[j+1],e,a[0],b[0],c[0],d[0]);
+  o[6]=o[6]<0?0:o[6]>1?1:o[6];return o}
+function mcGlove(P,k){
+  const w=k<0.8?0:k<0.9?_sm3((k-0.8)/0.1):k<1.14?1:k<1.36?1-_sm3((k-1.14)/0.22):0;if(w<=0)return;
+  armEvalG(k,_aO);
+  _aE.set(P.rx,P.ry,P.rz,'YXZ');_aR.makeRotationFromEuler(_aE);
+  _aX.set(1,0,0).applyMatrix4(_aR);const al=Math.atan2(_aX.z,_aX.x)*(1-_aO[6]),ca=Math.cos(al),sa=Math.sin(al);
+  _aS.set(-0.189,0.424,0.026).applyMatrix4(_aR).add(P.pel);
+  // 外向き(グラブ腕)は肩ラインの−x側
+  const hx=_aS.x-ca*_aO[0]-sa*_aO[2],hy=_aS.y+_aO[1],hz=_aS.z-sa*_aO[0]+ca*_aO[2];
+  if(P.eL)_aP.copy(P.eL).sub(_aS);else _aP.set(-0.2,-0.2,0);
+  _aT.set(-ca*_aO[3]-sa*_aO[5],_aO[4],-sa*_aO[3]+ca*_aO[5]).normalize().multiplyScalar(0.28);
+  _aP.lerp(_aT,w);
+  P.hL.x+=(hx-P.hL.x)*w;P.hL.y+=(hy-P.hL.y)*w;P.hL.z+=(hz-P.hL.z)*w;
+  ik(_aS,P.hL,LG.ua,LG.fa,_aP,_aM,_aN);(P.eL||(P.eL=new V3())).copy(_aM)}
 function mcPitch(P,k,variant,form){const T=MCD[variant?'p1':'p0'];const sec=T.rel+(k-1.0)*1.5;mcApply(P,mcTrack(T,T.t0+Math.max(0,Math.min(2.399,sec)),_mcA));
   const wr=k<0.72?0:k<0.9?(k-0.72)/0.18:k<1.08?1:k<1.3?1-(k-1.08)/0.22:0,f=form||0;
-  mcArm(P,k,f);
+  mcArm(P,k,f);mcGlove(P,k);
   return P}
 function mcQuirk(P,k,q){
   const ws=k<0.35?0:k<0.7?(k-0.35)/0.35:1,sdm=q.stride*(window.STRM||1.28);if(ws>0){const f=(sdm-1)*ws,dz=P.pel.z*f*0.7;P.fL.z*=1+f;P.pel.z+=dz;P.hL.z+=dz;P.hR.z+=dz;if(P.eL)P.eL.z+=dz;if(P.eR)P.eR.z+=dz}
