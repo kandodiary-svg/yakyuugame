@@ -7104,7 +7104,7 @@ function launchPitch(type,tgt,t,final,pre){
   let p;if(pre){p=pre;const f=fieldIdx();G.used[f][G.pit[f]]++}else p=throwPitch(type,tgt,final);
   if(NET.on){NET.pn++;U.netSw=null;U.netRes=null;U.netSent=false;U.netO=null}
   U.TS=(userBat()&&!NET.on)?(DIFF[G.diff]||DIFF.normal).ts:1;
-  U.pathUntil=0;U.swingMiss=false;U.pitch=p;U.wind=t;U.rel=t+1.0;if(userBat()&&G.diff==='easy')setTimeout(()=>{if(U.pitch===p)showPinfo(p)},1000);U.arrive=U.rel+p.T*U.TS;try{const kmh=p.kmh||p.speed||140;setTimeout(()=>{if(U.pitch===p)AudioDirector.playRelease(kmh)},1000)}catch(e){}U.swing=null;U.swingAnim=null;U.mittDone=false;
+  U.pathUntil=0;U.swingMiss=false;U.pitch=p;U.wind=t;U.rel=t+1.0;if(userBat()&&G.diff==='easy')setTimeout(()=>{if(U.pitch===p)showPinfo(p)},1000);U.arrive=U.rel+p.T*U.TS;try{const kmh=p.kmh||p.speed||140;setTimeout(()=>{if(U.pitch===p)AudioDirector.playRelease(kmh,p.T*U.TS,p.type)},1000)}catch(e){}U.swing=null;U.swingAnim=null;U.mittDone=false;
   if(!userBat()&&!NET.on)p.cpu=cpuBat(p,curBatter());
   paRecord(p);
   U.lastHand=null;U.phase='windup';
@@ -7142,8 +7142,8 @@ function resolvePitch(t){
 // 得点で試合状況が変わったときの実況（同点・先制・逆転・追加点）
 function emitScoreChange(b,hr){if(!b||G.over)return;const bt=G.runs[G.half],ft=G.runs[1-G.half],b0=b[G.half],b1=b[1-G.half];if(bt===b0)return;
   if(b0<b1&&bt===ft)emitGameEvent({type:'SCORE',tie:true,delay:900});else if(b0<=b1&&bt>ft)emitGameEvent({type:'SCORE',ahead:b0<b1||b0>0,first:b0===0&&b1===0,delay:900});else if(b0>b1&&bt>b0&&!hr)emitGameEvent({type:'SCORE',add:true,delay:900,pri:60})}
-function afterCount(){if(G.changed&&G.subbed){G.subbed=false;buildFigures()}if(G.changed&&!G.over){telop('チェンジ','#ffb000',true);caster(`${G.inn}回${G.half?'裏':'表'}、${G.t[G.half].short}の攻撃`);emitGameEvent({type:'INNING',inn:G.inn,half:G.half,maxInn:G.maxInn,delay:600});AudioDirector.setCrowd('CALM')}if(G.over)gameOverTelop()}
-function gameOverTelop(){if(G.walkoff)telop('サヨナラ！！','#ffb000',true);else{telop('ゲームセット','#ffffff',true);const w=G.runs[1]>G.runs[0]?1:0;emitGameEvent({type:'GAME_END',shutout:Math.min(...G.runs)===0,diff:Math.abs(G.runs[0]-G.runs[1]),summary:`${Math.max(...G.runs)}対${Math.min(...G.runs)}、${G.t[w].short}が勝ちました。${Math.min(...G.runs)===0?'見事な完封勝利です。':''}`,delay:900})}}
+function afterCount(){if(G.changed&&G.subbed){G.subbed=false;buildFigures()}if(G.changed&&!G.over){telop('チェンジ','#ffb000',true);try{AudioDirector.playJingle('change',0.15)}catch(e){}caster(`${G.inn}回${G.half?'裏':'表'}、${G.t[G.half].short}の攻撃`);emitGameEvent({type:'INNING',inn:G.inn,half:G.half,maxInn:G.maxInn,delay:600});AudioDirector.setCrowd('CALM')}if(G.over)gameOverTelop()}
+function gameOverTelop(){try{SFX.endJingle()}catch(e){}if(G.walkoff)telop('サヨナラ！！','#ffb000',true);else{telop('ゲームセット','#ffffff',true);const w=G.runs[1]>G.runs[0]?1:0;emitGameEvent({type:'GAME_END',shutout:Math.min(...G.runs)===0,diff:Math.abs(G.runs[0]-G.runs[1]),summary:`${Math.max(...G.runs)}対${Math.min(...G.runs)}、${G.t[w].short}が勝ちました。${Math.min(...G.runs)===0?'見事な完封勝利です。':''}`,delay:900})}}
 
 /* ---- インプレー ---- */
 /* ===== 守備（送球先）・走塁（進め／止まれ）の指示 ===== */
@@ -7164,11 +7164,11 @@ function playVariants(R,dec){const c=R.ctx,seed=1+Math.floor(Math.random()*2e9);
 // 選べる時間（プレー時刻）：守備は最初の送球の少し前まで、攻撃は捕球の頃まで（ゴロで三塁走者のときは早め）
 function decDeadline(R,dec){if(dec.side==='def'){const t0=R.throws.length?R.throws[0].t0:R.catchT+0.4;return Math.max(R.catchT*0.5,t0-0.08)}
   if(!R.air&&!/^(1B|2B|3B|IPHR)$/.test(R.type))return 0.3;return R.catchT+(R.air?0.05:0.1)}
-function decide(k){const P=U.play;if(!P||!P.dec||P.dec.chosen||P.shown)return;const d=P.dec,V=d.V;P.dec.chosen=k;ctrlKey='';
+function decide(k){const P=U.play;if(!P||!P.dec||P.dec.chosen||P.shown)return;const d=P.dec,V=d.V;P.dec.chosen=k;ctrlKey='';try{se('confirm')}catch(e){}
   if(!V||!V[k]||V[k]===P.R)return;const pt=now()-P.t0,Rn=V[k],mv=buildMoves(Rn,P.F);
   // 動いている選手は今いる位置から新しい目的地へ（瞬間移動させない）
   P.mv=mv.map((m,i)=>{const o=P.mv[i];if(JSON.stringify([m.to,m.leg2])===JSON.stringify([o.to,o.leg2]))return o;const l2=m.leg2&&m.leg2.t0<=pt;return{...m,from:fpos(P,i,pt),to:l2?m.leg2.to:m.to,leg2:l2?null:m.leg2,t0:Math.max(pt,0)+ACC_A}});// accelS は t0−ACC_A から動き出すので、今の位置から滑らかに出るよう後ろへずらす
-  P.R=Rn;telop(d.side==='def'?{1:'一塁へ！',2:'二塁へ！',3:'三塁へ！',4:'バックホーム！'}[k]:{go:'進め！',hold:'止まれ！'}[k],'#ffd24a')}
+  P.R=Rn;try{P.snd=SFX.timeline(P);P.sndI=P.snd.findIndex(e=>e.t>pt);if(P.sndI<0)P.sndI=P.snd.length}catch(e){}telop(d.side==='def'?{1:'一塁へ！',2:'二塁へ！',3:'三塁へ！',4:'バックホーム！'}[k]:{go:'進め！',hold:'止まれ！'}[k],'#ffd24a')}
 function buildMoves(R,F){
   const mv=F.map((f,i)=>({from:[f.x,f.z],to:[f.x,f.z],t0:0,spd:f.spd,leg2:null}));
   const ball0=R.sim.landing?[R.sim.landing.x,R.sim.landing.z]:[R.sim.pts[R.sim.pts.length-1].x,R.sim.pts[R.sim.pts.length-1].z];
@@ -7199,14 +7199,14 @@ function startPlay(R,t,q){
   const mv=buildMoves(R,F);
   try{if(ball.visible&&q>0.5)FX.hit(ball.position.x,ball.position.y,ball.position.z,q)}catch(e){}
   const _o=ball.visible&&U.phase==='flight'&&R.sim&&R.sim.pts[0]?{x:ball.position.x-R.sim.pts[0].x,y:ball.position.y-R.sim.pts[0].y,z:ball.position.z-R.sim.pts[0].z}:null;
-  U.play={R,off:_o,t0:t+0.075,mv,F,shown:false,q,dec:dec?{...dec,chosen:null,until:decDeadline(R,dec)}:null};U.phase='play';
+  U.play={R,off:_o,t0:t+0.075,mv,F,shown:false,q,dec:dec?{...dec,chosen:null,until:decDeadline(R,dec)}:null};U.phase='play';try{U.play.snd=SFX.timeline(U.play)}catch(e){console.warn('sfx',e)}
   const pw=clamp((R.sim.ev-30)/18,0,1);U.flashT=t;U.flashS=0.25+pw*0.35+(q>0.85?0.2:0);U.flashP=[U.pitch?U.pitch.tx:0,U.pitch?U.pitch.ty:0.8,0.05];U.shake=0.015+pw*0.05;
   // ヒットストップ：芯で捉えた強い打球ほど、当たった瞬間を一瞬止める（以後の時刻をすべて同じだけ後ろへずらす）
   {const hs=R.type==='FOUL'?0:(R.type==='HR'&&q>0.85)?0.16:(q>0.9&&R.sim.ev>=40)?0.11:q>0.78?0.06:0;
    if(hs>0&&OPT.hitstop!==false){U.hs={until:t+hs};U.play.t0+=hs;if(U.swingAnim!=null)U.swingAnim+=hs;U.flashT=t+hs-0.03}else U.hs=null}
   U.play.shot=R.type==='HR'?'hr':R.sim.launch>=28?'fly':R.sim.launch<6?'ground':'liner';
   const big=R.sim.ev>42&&R.sim.launch>18&&R.sim.launch<45;
-  try{U.runsBefore=G.runs.slice();const LC=U.lastContact||{},jam=LC.jammed||(q<0.35&&R.sim.ev<32);AudioDirector.playBat(AudioDirector.batType(q,R.sim.ev,U.mode,jam,R.type==='FOUL'),R.sim.ev,clamp((R.sim.spray||0)/60,-0.6,0.6))}catch(e){}
+  try{U.runsBefore=G.runs.slice();const LC=U.lastContact||{},jam=LC.jammed||(q<0.35&&R.sim.ev<32);AudioDirector.playBat(AudioDirector.batType(q,R.sim.ev,(userBat()?U.mode:'meet'),jam,R.type==='FOUL'),R.sim.ev,clamp((R.sim.spray||0)/60,-0.6,0.6))}catch(e){}
   if(big)emitGameEvent({type:'HR_START'});else{if(R.type==='FOUL')emitGameEvent({type:'FOUL'});else if(q>0.8&&R.sim.ev>=38)emitGameEvent({type:'HIT_START'});else emitGameEvent({type:'CONTACT',kind:R.sim.launch<5?'gr':R.sim.launch<16?'ln':'fl'});AudioDirector.setCrowd('ATTENTION',1500)}
   {const LC=U.lastContact||{};if(userBat()){if(LC.jammed)telop('詰まった…','#9fb3c8');else if(LC.offBalance)telop('泳がされた…','#9fb3c8');else if(q>=0.95)telop('ジャストミート！','#ffd84a');else if(q>=0.82)telop('グッド！','#8fe0a0')}}
   caster(big?'打った！　大きい！':R.sim.launch<5?'打った！　ゴロ！':R.sim.launch>50?'打ち上げた…':'打った！');
@@ -7436,8 +7436,8 @@ function step(t,dt){
       if(t>=U.until){if(G.over){U.phase='over';showResult()}else nextPitch(t)}break;
     case'windup':if(t>=U.rel){if(U.lastHand&&U.pitch&&!U.pitch.rebased){U.pitch.rebased=rebasePitch(U.pitch,U.lastHand)}U.phase='flight'}break;
     case'flight':{const p=U.pitch;
-      if(!userBat()&&p.cpu&&(p.cpu.k==='contact'||p.cpu.swing)&&U.swingAnim==null&&t>=U.arrive-0.09)U.swingAnim=t;
-      if(!U.mittDone&&t>=U.arrive){U.mittDone=true;const c=userBat()?(U.swing!=null&&Math.abs(U.swing-U.arrive)<timingWin()*1.5):(p.cpu&&p.cpu.k!=='strike'&&p.cpu.k!=='ball');if(!c){try{AudioDirector.playMitt(p.kmh||140,p.type,p.ty!=null&&p.ty<0.1)}catch(e){}}}
+      if(!userBat()&&p.cpu&&(p.cpu.k==='contact'||p.cpu.swing)&&U.swingAnim==null&&t>=U.arrive-0.09){U.swingAnim=t;try{AudioDirector.playSwing('meet')}catch(e){}}
+      if(!U.mittDone&&t>=U.arrive){U.mittDone=true;const c=userBat()?(U.swing!=null&&Math.abs(U.swing-U.arrive)<timingWin()*1.5):(p.cpu&&p.cpu.k!=='strike'&&p.cpu.k!=='ball');if(!c){try{AudioDirector.playMitt(p.kmh||140,p.type,p.ty!=null&&p.ty<0.1,p.tx)}catch(e){}}}
       {const hitNow=userBat()?(U.swing!=null&&t>=Math.max(U.arrive,U.swing)):(p.cpu&&p.cpu.k==='contact'&&t>=U.arrive);if(hitNow||t>=U.arrive+0.14){if(NET.on)netResolve(t);else resolvePitch(t)}}break}
     case'play':
       {const P=U.play,d=P.dec;if(d&&!d.chosen){const pt=t-P.t0;if(pt>=d.until){d.chosen='auto';ctrlKey=''}else if(pt>0.2)P.t0+=dt*0.18}}// 選べる間はわずかにスロー（打球の飛び出しは通常速度。以前は0.45倍速で全体が遅く見えた）
@@ -7454,6 +7454,7 @@ function animate(t,dt){_FDT=dt;_FRAME++;
   zoneGrp.visible=false;cursor.visible=false;aimM.visible=false;markM.visible=false;tring.visible=false;predM.visible=false;predG.visible=false;predL.visible=false;
   if(U.phase==='play'){
     const P=U.play,R=P.R,pt=t-P.t0;
+    try{if(!U.replay&&!U.paused)SFX.step(P,pt)}catch(e){}
     F.forEach((f,i)=>{const [x,z]=fpos(P,i,pt),m=P.mv[i];const moving=pt>m.t0&&d2([x,z],m.to)>0.2||(m.leg2&&pt>m.leg2.t0&&d2([x,z],m.leg2.to)>0.2);
       const b=playBall(P,pt);
       const ud=f.userData,sp=ud.lxz&&dt>0?Math.min(10,Math.hypot(x-ud.lxz[0],z-ud.lxz[1])/dt):7;ud.lxz=[x,z];
@@ -7758,14 +7759,24 @@ function seSetVol(v){SE.vol=v;try{localStorage.setItem('bbh42_se',String(v))}cat
 function se(kind){
   if(!SE.vol)return;const now=performance.now();if(now-SE.last<35)return;SE.last=now;
   try{
-    SE.ctx=SE.ctx||new (window.AudioContext||window.webkitAudioContext)();const c=SE.ctx,t=c.currentTime;
-    const tone=(f,dt,dur,type)=>{const o=c.createOscillator(),g=c.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t+dt);
-      g.gain.setValueAtTime(0.0001,t+dt);g.gain.exponentialRampToValueAtTime(0.08*SE.vol,t+dt+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+dt+dur);
-      o.connect(g);g.connect(c.destination);o.start(t+dt);o.stop(t+dt+dur+0.02)};
-    if(kind==='move')tone(880,0,0.05,'triangle');
-    else if(kind==='confirm'){tone(988,0,0.06);tone(1319,0.06,0.08)}
-    else if(kind==='cancel'){tone(660,0,0.06);tone(440,0.06,0.08)}
-    else if(kind==='success'){tone(784,0,0.08);tone(988,0.08,0.08);tone(1319,0.16,0.14)}
+    SE.ctx=SE.ctx||new (window.AudioContext||window.webkitAudioContext)();const c=SE.ctx;if(c.state==='suspended'){try{const r=c.resume();if(r&&r.catch)r.catch(()=>{})}catch(e){}}
+    if(!SE.out){const cm=c.createDynamicsCompressor();cm.threshold.value=-20;cm.ratio.value=3;cm.knee.value=10;cm.connect(c.destination);SE.out=cm}
+    const t=c.currentTime+0.004,V=SE.vol,out=SE.out;
+    // ベル系：基音＋非整数倍音（すぐ消える）。やわらかい「ポン」になる
+    const bell=(f,dt,dur,g,o)=>{o=o||{};const x=c.createOscillator(),y=c.createOscillator(),gx=c.createGain(),gy=c.createGain(),t0=t+dt,pk=Math.max(0.0003,g*V);
+      x.type=o.type||'sine';y.type='sine';x.frequency.setValueAtTime(f,t0);if(o.f2)x.frequency.exponentialRampToValueAtTime(o.f2,t0+dur);y.frequency.setValueAtTime(f*(o.r||2.76),t0);
+      gx.gain.setValueAtTime(0.0001,t0);gx.gain.exponentialRampToValueAtTime(pk,t0+0.006);gx.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+      gy.gain.setValueAtTime(0.0001,t0);gy.gain.exponentialRampToValueAtTime(Math.max(0.0002,pk*(o.h==null?0.3:o.h)),t0+0.004);gy.gain.exponentialRampToValueAtTime(0.0001,t0+dur*0.4);
+      x.connect(gx);y.connect(gy);gx.connect(out);gy.connect(out);x.start(t0);y.start(t0);x.stop(t0+dur+0.03);y.stop(t0+dur*0.4+0.03)};
+    // 一瞬のクリック（ノイズを0.02秒だけ）：タップの手応え
+    const click=(dt,f,g)=>{const n=Math.floor(c.sampleRate*0.02),b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,3);
+      const s=c.createBufferSource(),fl=c.createBiquadFilter(),gg=c.createGain();s.buffer=b;fl.type='bandpass';fl.frequency.value=f;fl.Q.value=1.2;gg.gain.value=g*V;s.connect(fl);fl.connect(gg);gg.connect(out);s.start(t+dt)};
+    if(kind==='move'){click(0,3200,.14);bell(1568,0,.05,.035,{type:'triangle',h:.1})}
+    else if(kind==='confirm'){bell(1047,0,.1,.07);bell(1568,.07,.18,.07)}
+    else if(kind==='cancel'){bell(784,0,.09,.065,{type:'triangle',h:.15});bell(523,.065,.15,.065,{type:'triangle',h:.15})}
+    else if(kind==='success'){[784,988,1175,1568].forEach((f,i)=>bell(f,i*.075,.3,.075))}
+    else if(kind==='toggle'){click(0,2400,.2);bell(1175,0,.07,.05,{h:.2})}
+    else if(kind==='error'){bell(247,0,.12,.07,{type:'triangle',h:0});bell(208,.11,.16,.07,{type:'triangle',h:0})}
   }catch(e){}
 }
 function activeScreenId(){const s=document.querySelector('.scr.active');return s?s.id:''}
@@ -7773,6 +7784,7 @@ function isGameScreen(){return /game|play|match/.test(activeScreenId())}
 const BACK_TEXT=/^(戻る|ホームへ|ホームに戻る|タイトルへ|キャンセル)$/;
 try{document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button');if(!b||b.disabled||isGameScreen())return;
   const t=(b.textContent||'').trim();se(BACK_TEXT.test(t)?'cancel':/成立|獲得|契約しました|完了/.test(t)?'success':'confirm')},true)}catch(e){}
+try{document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('#ctrl .dp,#ctrl [data-m],#ctrl [data-tac],#ctrl #tPick,#ctrl #tIbb,#ctrl #tShift');if(b&&!b.disabled)se('move')},true)}catch(e){}
 /* ===== キーボード操作：矢印で移動、Enterで決定、Escで戻る、Q/Eでタブ切替 ===== */
 function visibleButtons(){
   const root=document.querySelector('.scr.active')||document.body;
@@ -10071,7 +10083,7 @@ function tacRowPit(){const can=U.phase==='aim',pk=pickoffBase()>=0;
 (function(){try{const st=document.createElement('style');st.textContent=`#ctrl .tac{display:flex;align-items:center;gap:6px;margin:6px 0 2px;flex-wrap:wrap}#ctrl .tac span{font-size:12px;color:#6b7a8c;font-weight:700}
 #ctrl .tac button{flex:1;min-width:64px;padding:6px 8px;border-radius:8px;border:1px solid #c9d3df;background:#fff;color:#27364a;font-weight:800;font-size:13px}
 #ctrl .tac button.on{background:linear-gradient(180deg,#ffd24a,#f0a91c);border-color:#d99000;color:#3a2600}#ctrl .tac button:disabled{opacity:.45}@media (max-width:700px){#ctrl .tac{margin-right:46px}}`;document.head.appendChild(st)}catch(e){console.warn(e)}})();
-function doSwing(){if(!userBat()||U.paused)return;if((U.phase==='windup'||U.phase==='flight')&&U.swing==null){const t=now();U.swing=t;U.swingAnim=t-0.07;if(NET.on)netSend({t:'sws',n:NET.pn,dt:t-U.arrive})}}
+function doSwing(){if(!userBat()||U.paused)return;if((U.phase==='windup'||U.phase==='flight')&&U.swing==null){const t=now();U.swing=t;U.swingAnim=t-0.07;try{AudioDirector.playSwing(U.mode)}catch(e){}if(NET.on)netSend({t:'sws',n:NET.pn,dt:t-U.arrive})}}
 function doThrow(){if(U.phase!=='aim')return;launchPitch(U.sel,{...U.aim},now());if(NET.on)netSend({t:'pitch',p:JSON.parse(JSON.stringify(U.pitch))})}
 /* ===== 作戦：牽制・敬遠・守備シフト ===== */
 function pickoffBase(){return G.bases[0]?0:G.bases[1]&&!G.bases[2]?1:-1}
@@ -10261,6 +10273,7 @@ function initAudio(){if(AC)return;try{AC=new(window.AudioContext||window.webkitA
   NB=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate);const d=NB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
   const src=AC.createBufferSource();src.buffer=NB;src.loop=true;const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=650;
   crowdG=AC.createGain();crowdG.gain.value=0.04;src.connect(lp);lp.connect(crowdG);crowdG.connect(AC.destination);src.start()}catch(e){AC=null}
+  try{if(AC)SFX.init()}catch(e){console.warn('fx',e)}
   try{setTimeout(()=>VoiceBank.warm(),1500)}catch(e){}}
 function noiseHit(freq,type,dur,vol){const s=AC.createBufferSource();s.buffer=NB;const f=AC.createBiquadFilter();f.type=type;f.frequency.value=freq;const g=AC.createGain();const t=AC.currentTime;
   g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);s.connect(f);f.connect(g);g.connect(AC.destination);s.start(t,Math.random());s.stop(t+dur+0.05)}
@@ -10268,6 +10281,263 @@ function sfx(k,v){
   try{if(k==='bat')AudioDirector.playBat('normal',v||40);else if(k==='foul')AudioDirector.playBat('foul',30);else if(k==='mitt')AudioDirector.playMitt(v||140);
     else if(k==='cheer')AudioDirector.setCrowd('CHEER',2200);else if(k==='hr')AudioDirector.setCrowd('HUGE_CHEER',4500)}catch(e){}
 }
+
+/* ===== 効果音エンジン v154：すべてWebAudioで合成（音声ファイルなし＝オリジナル）=====
+   ・全SFXを1本のバス（コンプレッサー付き）に集め、球場の残響（合成インパルス応答）を少し混ぜる
+   ・打球音は「当たりの質」で、ミット/グラブは球速・距離で、ボールはバウンド・転がり・フェンス・スタンドで鳴り分ける
+   ・観客は「声（鋸歯波×母音フォルマント）」「拍手」「手拍子」を状況に応じて重ねる
+   ・どれも毎回わずかに揺らして、同じ音の連打にならないようにする */
+const SFX={
+  bus:null,rev:null,claps:null,ready:false,act:0,lastR:{},lastClap:0,_m:1,GM:{bat_perfect:0.42,bat_hard:0.37,bat_normal:0.4,bat_weak:0.37,bat_jammed:0.36,bat_foul:0.22,bat_bunt:0.32,swing:0.92,swing_strong:0.93,swing_bunt:1.85,mitt:0.44,mitt_bounce:0.4,release:0.27,catch_fly:0.24,catch_line:0.28,catch_ground:0.37,catch_recv:0.26,whip:0.41,bounce_dirt:0.34,bounce_grass:0.93,roll:0.63,fence:0.52,seats:0.28,net:0.58,slide:0.24,base:0.26,jingle_change:0.41,jingle_win:0.4,jingle_lose:0.59,vox_cheer:0.45,vox_roar:0.52,vox_gasp:0.52,vox_groan:0.54,vox_boo:0.68,applause:1.15,clap:0.77},// 音ごとの音量補正（旧実装と同水準になるようオフライン計測で調整）
+ 
+  use(k){this._m=this.GM[k]||1},
+  ok(){return !!(typeof AC!=='undefined'&&AC&&this.ready&&this.bus)},
+  V(){return AudioDirector.vol('sfx')},
+  J(a){return 1+(Math.random()*2-1)*a},
+  init(){
+    if(!AC||this.ready)return;
+    const sr=AC.sampleRate,bus=AC.createGain(),cm=AC.createDynamicsCompressor();
+    cm.threshold.value=-15;cm.knee.value=12;cm.ratio.value=4;cm.attack.value=0.002;cm.release.value=0.16;
+    bus.gain.value=0.95;const ws=AC.createWaveShaper(),wc=new Float32Array(2048);for(let i=0;i<2048;i++){const x=i/1023.5-1;wc[i]=Math.tanh(x*1.2)/Math.tanh(1.2)*0.97}ws.curve=wc;// 最後に軽いソフトクリップ（万一の過大入力でも割れにくくする）
+    bus.connect(cm);cm.connect(ws);ws.connect(AC.destination);
+    // 球場の残響：減衰するノイズ（時間とともに高域が減る）＋外野フェンスからの反射
+    const len=Math.floor(sr*1.4),ir=AC.createBuffer(2,len,sr);
+    for(let c=0;c<2;c++){const d=ir.getChannelData(c);let lp=0;
+      for(let i=0;i<len;i++){const t=i/sr;lp+=((Math.random()*2-1)-lp)*Math.max(0.07,0.6*Math.exp(-t*3.4));d[i]=lp*Math.exp(-t*3.2)*(t<0.015?t/0.015:1)}
+      [[0.09,0.55],[0.18,0.34],[0.29,0.2]].forEach(([tt,a],n)=>{const j=Math.floor((tt+c*0.006+n*0.002)*sr);for(let m=0;m<48&&j+m<len;m++)d[j+m]+=(Math.random()*2-1)*a*Math.exp(-m/11)});
+    }
+    const cv=AC.createConvolver();cv.buffer=ir;const rg=AC.createGain();rg.gain.value=0.9;cv.connect(rg);rg.connect(bus);
+    // 拍手：2秒ぶんの細かい「パチッ」を敷き詰めたバッファ（再生速度・開始位置を変えて使い回す）
+    const cl=AC.createBuffer(1,sr*2,sr),cd=cl.getChannelData(0);
+    for(let n=0;n<300;n++){const p=Math.floor(Math.random()*(sr*2-800)),a=0.35+Math.random()*0.65,ln=Math.floor(sr*(0.002+Math.random()*0.005));let lp=0;
+      for(let i=0;i<ln;i++){const w=Math.random()*2-1;lp+=(w-lp)*0.4;cd[p+i]+=(w-lp*0.5)*a*Math.exp(-i/(ln*0.3))}}
+    let mx=0;for(let i=0;i<cd.length;i++)mx=Math.max(mx,Math.abs(cd[i]));for(let i=0;i<cd.length;i++)cd[i]/=(mx||1);
+    this.claps=cl;this.bus=bus;this.rev=cv;this.ready=true;
+    // 常時流れる場内のざわめき：低域のどよめき＋中域のおしゃべり＋高域の空気感を、それぞれゆっくり揺らす
+    try{if(typeof crowdG!=='undefined'&&crowdG&&typeof NB!=='undefined'&&NB){
+      const lay=(type,f,q,g,hz,dep)=>{const s=AC.createBufferSource();s.buffer=NB;s.loop=true;const b=AC.createBiquadFilter();b.type=type;b.frequency.value=f;b.Q.value=q;const gg=AC.createGain();gg.gain.value=g;
+        const lf=AC.createOscillator(),lg=AC.createGain();lf.frequency.value=hz;lg.gain.value=g*dep;lf.connect(lg);lg.connect(gg.gain);s.connect(b);b.connect(gg);gg.connect(crowdG);s.start(0,Math.random()*1.5);lf.start()};
+      lay('bandpass',380,0.7,0.55,0.11,0.35);lay('bandpass',1250,0.8,0.28,0.23,0.45);lay('highpass',3200,0.7,0.05,0.31,0.5)}}catch(e){}
+  },
+  /* ---- 部品 ---- */
+  out(g,pan,send){let n=g;if(pan&&AC.createStereoPanner){const p=AC.createStereoPanner();p.pan.value=clamp(pan,-1,1);n.connect(p);n=p}
+    n.connect(this.bus);if(send>0){const s=AC.createGain();s.gain.value=send;n.connect(s);s.connect(this.rev)}},
+  lv(o){return o.cat?AudioDirector.vol(o.cat)*AudioDirector.duck:this.V()},
+  // ノイズ：t開始(秒) d長さ f/f2 中心周波数(f→f2) q type g音量 a立ち上がり pan send(残響量) cat(音量カテゴリ)
+  nz(o){const t=AC.currentTime+(o.t||0),d=o.d,s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();
+    s.buffer=NB;s.loop=true;f.type=o.type||'bandpass';f.Q.value=o.q||0.8;f.frequency.setValueAtTime(o.f,t);if(o.f2)f.frequency.exponentialRampToValueAtTime(o.f2,t+d);
+    const a=Math.min(o.a||0.002,d*0.8),pk=Math.max(0.0002,o.g*this.lv(o)*this._m);g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(pk,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+    s.connect(f);f.connect(g);this.out(g,o.pan,o.send);s.start(t,Math.random()*Math.max(0.1,1.9-d));s.stop(t+d+0.03)},
+  os(o){const t=AC.currentTime+(o.t||0),d=o.d,x=AC.createOscillator(),g=AC.createGain();x.type=o.type||'sine';x.frequency.setValueAtTime(o.f,t);if(o.f2)x.frequency.exponentialRampToValueAtTime(o.f2,t+d);
+    const a=Math.min(o.a||0.002,d*0.8),pk=Math.max(0.0002,o.g*this.lv(o)*this._m);g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(pk,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+    let n=x;if(o.lp){const l=AC.createBiquadFilter();l.type='lowpass';l.frequency.value=o.lp;l.Q.value=0.5;x.connect(l);n=l}
+    n.connect(g);this.out(g,o.pan,o.send);x.start(t);x.stop(t+d+0.03)},
+  // 余韻（ベル/金属/硬い木）：基音fの倍音を、それぞれの減衰で鳴らす
+  ring(t,f,parts,d,g,pan,send,cat){parts.forEach(([r,a,ds])=>this.os({t,f:f*r,d:d*(ds||1),g:g*a,a:0.001,pan,send,cat}))},
+  /* ---- 打撃 ---- */
+  bat(type,ev,pan){
+    this.use('bat_'+type);const k=clamp(((ev||36)-22)/26,0,1),J=a=>this.J(a),p=pan||0,G=0.8+0.35*k;
+    const nz=o=>this.nz(Object.assign({pan:p},o)),os=o=>this.os(Object.assign({pan:p},o));
+    if(type==='perfect'){// 芯：「カキーン」。鋭い破裂音＋高い余韻＋球場に抜ける残響
+      nz({d:.008,type:'highpass',f:5200,g:.55*G,a:.0004});
+      nz({d:.08,f:2900*J(.05),f2:1900,q:1,g:.8*G,a:.0008,send:.12});
+      nz({d:.14,f:950,f2:620,q:.9,g:.35*G,a:.001,send:.2});
+      this.ring(0,1480*J(.04),[[1,1],[2.76,.5,.7],[5.4,.25,.5]],.17,.17*G,p,.3);
+      os({d:.11,f:215,f2:100,g:.3*G})}
+    else if(type==='hard'){
+      nz({d:.007,type:'highpass',f:4800,g:.4*G,a:.0004});
+      nz({d:.07,f:2500*J(.05),f2:1700,q:1,g:.7*G,a:.0008,send:.1});
+      nz({d:.12,f:850,f2:560,q:.9,g:.32*G,a:.001,send:.14});
+      this.ring(0,1260*J(.05),[[1,1],[2.76,.45,.7],[5.4,.2,.5]],.13,.12*G,p,.2);
+      os({d:.1,f:190,f2:105,g:.26*G})}
+    else if(type==='normal'){
+      nz({d:.006,type:'highpass',f:4200,g:.28,a:.0004});
+      nz({d:.06,f:2200*J(.06),f2:1500,q:1,g:.5*G,a:.0008,send:.07});
+      nz({d:.09,f:720,f2:480,q:.9,g:.24*G,a:.001});
+      this.ring(0,1080*J(.06),[[1,1],[2.76,.4,.6]],.09,.07*G,p,.1);
+      os({d:.08,f:170,f2:100,g:.2*G})}
+    else if(type==='weak'){// 当たり損ない：こもった短い音
+      nz({d:.05,f:1500*J(.08),f2:1000,q:.9,g:.32,a:.001});
+      nz({d:.07,f:600,f2:420,q:.9,g:.2,a:.001});
+      os({d:.06,f:150,f2:95,g:.14})}
+    else if(type==='jammed'){// 詰まり：「ゴッ」と鈍い音＋バットの手元に響くジーンとした振動
+      nz({d:.07,type:'lowpass',f:620*J(.1),g:.4,a:.001});
+      os({d:.09,f:130,f2:70,g:.36});
+      os({t:.004,d:.07,f:330*J(.05),f2:210,type:'square',g:.045,lp:900});
+      nz({t:.01,d:.035,f:1800,q:1.2,g:.1,a:.001})}
+    else if(type==='bunt'){// バント：ボールをバットに当てて殺す「コツン」
+      nz({d:.04,f:1300*J(.08),f2:900,q:1,g:.3,a:.001});
+      os({d:.07,f:240,f2:130,g:.2});
+      this.ring(0,860*J(.06),[[1,1],[2.76,.3,.5]],.06,.04,p,.05)}
+    else{// ファウルチップ：薄くかすめる「チッ」
+      nz({d:.03,type:'highpass',f:4600*J(.08),g:.45,a:.0004});
+      nz({d:.045,f:3300*J(.08),f2:2400,q:1.4,g:.28,a:.0006});
+      this.ring(0,2300*J(.05),[[1,1],[2.4,.35,.6]],.06,.05,p,.08)}
+    try{if(navigator.vibrate)navigator.vibrate(type==='perfect'?35:type==='hard'?25:12)}catch(e){}
+  },
+  swing(mode){this.use(mode==='bunt'?'swing_bunt':mode==='strong'?'swing_strong':'swing');const p=(Math.random()-.5)*.1;
+    if(mode==='bunt'){this.nz({d:.07,f:700,f2:1500,q:1.2,g:.05,a:.03,pan:p});return}
+    const g=mode==='strong'?.3:.22;
+    this.nz({d:.14,f:520,f2:2400*this.J(.1),q:1.3,g,a:.065,pan:p});// 「ブンッ」：中心周波数が上がりながら鋭く通り過ぎる
+    this.nz({d:.16,type:'lowpass',f:700,f2:300,g:g*.45,a:.07,pan:p})},
+  /* ---- ミット・グラブ ---- */
+  mittCore(k,low,pan,att,hi,send,t){att=att==null?1:att;hi=hi==null?1:hi;t=t||0;const g=(0.5+0.5*k)*att;
+    this.nz({t,d:.045,f:(1500+900*k)*hi,f2:1000*hi,q:1,g:.62*g,a:.0005,pan,send});
+    this.os({t,d:.09,f:(low?380:520)+170*k,f2:low?220:300,g:.5*g,pan,send});
+    this.nz({t,d:.1,type:'lowpass',f:260+120*k,g:.55*g,a:.001,pan,send});
+    if(k>.35)this.nz({t:t+.003,d:.014,type:'highpass',f:3300,g:(.1+.3*k)*att,a:.0004,pan})},
+  mitt(kmh,pt,bounce,tx){
+    this.use(bounce?'mitt_bounce':'mitt');const p=clamp((tx||0)*1.2,-.3,.3)+(Math.random()-.5)*.06;
+    if(bounce){// ワンバウンドを体で止める：鈍い音＋土をこする音
+      this.os({d:.09,f:170,f2:90,g:.4,pan:p});this.nz({d:.08,type:'lowpass',f:380,g:.45,pan:p});this.nz({t:.02,d:.07,f:1100,q:.9,g:.16,pan:p});return}
+    const k=clamp(((kmh||140)-120)/40,0,1),low=(pt==='fk'||pt==='sf'||pt==='ch');
+    this.mittCore(k*this.J(.06),low,p,1,this.J(.04),.1)},
+  // 守備の捕球：飛球（外野ほど遠く・柔らかく）／ライナー／ゴロをさばく／送球を受ける
+  catchBall(kind,pw,pan,dist){
+    this.use('catch_'+kind);const far=clamp((dist||20)/110,0,1),att=1-far*.55,hi=1-far*.35,sd=.1+far*.25,p=pan||0;
+    if(kind==='recv'){this.mittCore(clamp(pw,.1,1)*.9+.1,false,p,1,hi,sd);return}
+    if(kind==='fly'){
+      this.nz({d:.05,f:1150*hi,f2:780,q:.9,g:.4*att,a:.001,pan:p,send:sd});this.os({d:.09,f:350,f2:200,g:.32*att,pan:p,send:sd});this.nz({d:.1,type:'lowpass',f:320,g:.28*att,a:.001,pan:p,send:sd});return}
+    if(kind==='line'){this.mittCore(.55+pw*.3,false,p,att,hi,sd);return}
+    // ゴロ：土をすくう「ザッ」→グラブに収まる「パスッ」
+    this.nz({d:.07,f:900,f2:450,q:.8,g:.2*att,a:.004,pan:p});this.mittCore(.3+pw*.15,true,p,att*.85,hi,sd,.035)},
+  throwWhip(pw,pan){this.use('whip');this.nz({d:.12,f:1500,f2:3800*this.J(.1),q:1.2,g:.08+.1*clamp(pw,0,1),a:.05,pan})},
+  release(kmh,dur,pt){// 投球：指先を離れる「シュッ」＋打者へ近づくにつれて強まる風切り音
+    this.use('release');const k=clamp(((kmh||140)-120)/40,0,1),d=clamp(dur||.45,.2,.9);
+    this.nz({d:.05,type:'highpass',f:3500,g:.05+.07*k,a:.002});
+    this.nz({t:.02,d:d*.97,f:1400,f2:3300,q:1.6,g:.05+.07*k,a:d*.7})},
+  /* ---- ボール ---- */
+  bounce(n,dist,dirt,pw,pan){
+    this.use(dirt?'bounce_dirt':'bounce_grass');const g=clamp(.55/(1+(n||1)*.9),.07,.55)*clamp(1.2-(dist||0)/150,.4,1)*(pw==null?1:pw),p=pan||0;
+    if(dirt){this.os({d:.05,f:190,f2:110,g:g*.55,pan:p});this.nz({d:.035,f:1000,f2:600,q:.9,g:g*.55,a:.001,pan:p})}
+    else{this.nz({d:.07,type:'lowpass',f:420,g:g*.7,a:.001,pan:p});this.nz({d:.03,f:1800,q:.8,g:g*.12,pan:p})}},
+  roll(dur,g,pan,dirt){this.use('roll');const t=AC.currentTime,d=clamp(dur,.1,3),s=AC.createBufferSource(),f=AC.createBiquadFilter(),gg=AC.createGain(),pk=Math.max(.0002,(g||.04)*this.V()*this._m);
+    s.buffer=NB;s.loop=true;f.type='bandpass';f.Q.value=.6;f.frequency.setValueAtTime(dirt?1100:1700,t);f.frequency.exponentialRampToValueAtTime(dirt?600:900,t+d);
+    gg.gain.setValueAtTime(.0001,t);gg.gain.linearRampToValueAtTime(pk,t+.06);gg.gain.linearRampToValueAtTime(pk*.35,t+d);gg.gain.linearRampToValueAtTime(.0001,t+d+.05);
+    s.connect(f);f.connect(gg);this.out(gg,pan,.05);s.start(t,Math.random()*1.2);s.stop(t+d+.1)},
+  fence(pw,pan){this.use('fence');pw=clamp(pw==null?1:pw,.15,1);const p=pan||0;// 外野フェンス：クッションの鈍い衝撃＋金網のきしみ
+    this.os({d:.22,f:95,f2:48,g:.4*pw+.1,pan:p,send:.2});this.nz({d:.2,type:'lowpass',f:340,g:.5*pw+.15,pan:p,send:.2});
+    for(let i=0;i<7;i++)this.nz({t:.01+i*.032+Math.random()*.01,d:.05,f:3300+Math.random()*900,q:3,g:.05*pw*(1-i/9),pan:p,send:.15});
+    this.os({d:.28,f:420,f2:380,g:.04*pw,pan:p,send:.2})},
+  seats(pan){this.use('seats');const p=pan||0;// スタンドに飛び込んだ球：座席の金属音
+    this.ring(0,780*this.J(.1),[[1,1],[2.3,.5,.7],[3.9,.35,.5]],.22,.12,p,.4);this.nz({d:.09,f:2600,q:1.3,g:.18,a:.001,pan:p,send:.35});this.os({d:.1,f:140,f2:70,g:.18,pan:p,send:.2})},
+  net(pan){this.use('net');const p=pan||0;this.nz({d:.14,f:1600,q:1,g:.22,a:.004,pan:p,send:.1});for(let i=0;i<4;i++)this.nz({t:.02+i*.03,d:.04,f:2800+Math.random()*700,q:2.5,g:.05*(1-i/5),pan:p})},
+  slide(head,pan){this.use('slide');const p=pan||0;// スライディング：土をこする音＋砂ぼこり＋体が地面に当たる低音
+    this.nz({d:head?.42:.3,f:900,f2:450,q:.5,g:head?.3:.36,a:.03,pan:p,send:.1});this.nz({d:.22,type:'highpass',f:2800,g:.09,a:.02,pan:p});this.os({t:.02,d:.1,f:140,f2:80,g:.26,pan:p})},
+  base(pan,pw){this.use('base');pw=pw==null?.6:pw;this.os({d:.05,f:130,f2:80,g:.2*pw,pan});this.nz({d:.04,f:900,q:.9,g:.14*pw,pan})},
+  /* ---- ジングル（オリジナルの短い合図） ---- */
+  bell(t,f,d,g,pan,send){this.ring(t,f,[[1,1],[2.76,.35,.5],[5.4,.15,.3]],d,g,pan,send)},
+  jingle(kind,delay){this.use('jingle_'+kind);const dl=delay||0;
+    if(kind==='change'){[[784,0],[988,.13],[1319,.26]].forEach(([f,t],i)=>this.bell(dl+t,f,i===2?.6:.35,.13,0,.25))}
+    else if(kind==='win'){// 勝利：明るい和音のファンファーレ
+      [[262,0],[330,.16],[392,.32],[523,.5]].forEach(([f,t])=>this.os({t:dl+t,d:.3,f,type:'sawtooth',g:.08,a:.01,lp:2200,send:.2}));
+      [523,659,784].forEach(f=>this.os({t:dl+.5,d:1.3,f,type:'sawtooth',g:.07,a:.02,lp:2000,send:.3}));
+      this.nz({t:dl+.5,d:1.1,type:'highpass',f:5000,g:.14,a:.003,send:.2});[784,988,1319,1568].forEach((f,i)=>this.bell(dl+.55+i*.07,f,.9,.07,0,.3))}
+    else if(kind==='lose'){// 敗戦：しずかに下がる4音
+      [[330,0],[294,.3],[262,.6],[247,.95]].forEach(([f,t],i)=>this.os({t:dl+t,d:i===3?1.1:.5,f,type:'triangle',g:.14,a:.02,lp:1400,send:.3}))}
+    else if(kind==='run'){[1047,1319,1568].forEach((f,i)=>this.bell(dl+i*.06,f,.35,.07,0,.2))}},
+  endJingle(){let w=1;try{if(!G.auto&&G.userSide!=null){const a=G.runs[G.userSide],b=G.runs[1-G.userSide];w=a>b?1:a<b?0:2}}catch(e){}
+    if(this.ok()&&w!==2)this.jingle(w?'win':'lose',2.2)},
+  /* ---- 観客 ---- */
+  VX:{
+    cheer:{n:9,f:[[800,5,1],[1250,6,.7],[2800,8,.35]],att:.28,dur:1.1,dec:.8,gl:[.93,1.12],lv:1,cool:900},
+    roar:{n:12,f:[[800,5,1],[1250,6,.7],[2800,8,.35]],att:.35,dur:2.4,dec:1.6,gl:[.95,1.1],lv:1.35,cool:2500},
+    gasp:{n:7,f:[[520,5,1],[900,6,.7],[2500,8,.2]],att:.1,dur:.4,dec:.45,gl:[.9,1.15],lv:.55,cool:1500},
+    groan:{n:8,f:[[700,5,1],[1100,6,.6],[2600,8,.2]],att:.15,dur:.9,dec:.9,gl:[1.05,.78],lv:.7,cool:1500},
+    boo:{n:8,f:[[330,6,1],[800,6,.5],[2400,8,.1]],att:.3,dur:1.4,dec:.9,gl:[1,.82],lv:.6,cool:2500},
+  },
+  // 観客の声：音程のばらばらな鋸歯波をいくつも重ね、母音のフォルマント（口の形）を通す
+  vox(kind,scale){
+    const S=this.VX[kind];if(!S||!this.ok())return;const now=performance.now();
+    const lr=this.lastR[kind];if(this.act>=3||(lr!=null&&now-lr<S.cool))return;
+    const AD=AudioDirector,v=AD.vol('cheer')*(scale||1)*S.lv*AD.duck;if(v<=0.01)return;
+    this.lastR[kind]=now;this.act++;
+    const t=AC.currentTime+0.02,end=t+S.att+S.dur+S.dec,pk=v*0.22*(this.GM['vox_'+kind]||1),env=AC.createGain();
+    env.gain.setValueAtTime(0.0001,t);env.gain.linearRampToValueAtTime(pk,t+S.att);env.gain.exponentialRampToValueAtTime(pk*0.6,t+S.att+S.dur);env.gain.exponentialRampToValueAtTime(0.0001,end);
+    const vin=AC.createGain();
+    S.f.forEach(([f,q,g])=>{const b=AC.createBiquadFilter();b.type='bandpass';b.frequency.value=f;b.Q.value=q;const gg=AC.createGain();gg.gain.value=g;vin.connect(b);b.connect(gg);gg.connect(env)});
+    for(let i=0;i<S.n;i++){const o=AC.createOscillator();o.type='sawtooth';const f0=95+Math.random()*190;
+      o.frequency.setValueAtTime(f0*S.gl[0],t);o.frequency.exponentialRampToValueAtTime(f0*S.gl[1],t+S.att+S.dur*0.6);o.detune.value=(Math.random()-.5)*60;
+      const og=AC.createGain();og.gain.value=0.5+Math.random()*0.5;o.connect(og);og.connect(vin);o.start(t);o.stop(end+0.05)}
+    const ns=AC.createBufferSource(),nf=AC.createBiquadFilter(),ng=AC.createGain();ns.buffer=NB;ns.loop=true;nf.type='bandpass';nf.frequency.value=1800;nf.Q.value=0.6;ng.gain.value=0.9;ns.connect(nf);nf.connect(ng);ng.connect(env);ns.start(t,Math.random()*1.5);ns.stop(end+0.05);
+    this.out(env,0,0.25);setTimeout(()=>{this.act=Math.max(0,this.act-1)},(end-t)*1000+100)},
+  applause(dur,lvl,delay){
+    const AD=AudioDirector,v=AD.vol('cheer')*lvl*AD.duck;if(v<=0.01||!this.ok())return;
+    const t=AC.currentTime+(delay||0.02),s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();
+    s.buffer=this.claps;s.loop=true;s.playbackRate.value=0.92+Math.random()*0.16;f.type='bandpass';f.frequency.value=1700;f.Q.value=0.5;
+    g.gain.setValueAtTime(0.0001,t);const am=v*0.28*(this.GM.applause||1);g.gain.linearRampToValueAtTime(am,t+Math.min(0.5,dur*0.25));g.gain.setValueAtTime(am,t+dur*0.55);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    s.connect(f);f.connect(g);this.out(g,0,0.18);s.start(t,Math.random()*0.8);s.stop(t+dur+0.05)},
+  // チャンスの手拍子：「パパパ・パン・パパパ・パン」を、少しずつずれた何人ぶんかで重ねる
+  clapRhythm(big){this.use('clap');const lv=big?0.5:0.35,gap=0.27;
+    [0,1,2,4,6,7,8,10].forEach(b=>{for(let m=0;m<4;m++)this.nz({t:b*gap+Math.random()*0.025,d:0.05,f:1700+Math.random()*900,q:1.3,g:lv*(0.4+Math.random()*0.35),a:0.0004,pan:(Math.random()-.5)*.8,send:.25,cat:'cheer'})})},
+  crowdHook(k,ms,prev){if(!this.ok()||document.hidden)return;
+    if(k==='HUGE_CHEER'){this.vox('roar');setTimeout(()=>this.applause(3.2,0.9),700)}
+    else if(k==='CHEER'){this.vox('cheer');if(ms>=1800)setTimeout(()=>this.applause(1.6,0.55),500)}
+    else if(k==='SILENCE')this.vox('groan');
+    else if(k==='BOO')this.vox('boo');
+    else if(k==='ATTENTION'&&ms){if(Math.random()<0.6)this.vox('gasp')}
+    else if((k==='CHANCE'||k==='BIG_CHANCE')&&prev!=='CHANCE'&&prev!=='BIG_CHANCE'&&performance.now()-this.lastClap>12000){this.lastClap=performance.now();this.clapRhythm(k==='BIG_CHANCE')}},
+  /* ---- プレー中の音のタイムライン：打球の軌道・守備・走者の動きから「いつ・何が鳴るか」を先に作る ---- */
+  timeline(P){
+    const R=P.R,sim=R.sim,L=[],AD=AudioDirector,pts=sim.pts,last=pts[pts.length-1],hr=R.type==='HR',foul=R.type==='FOUL';
+    const add=(t,f)=>{if(isFinite(t)&&t>=-0.05)L.push({t,f})},pan=x=>clamp((x||0)/50,-0.7,0.7);
+    const endT=hr?last.t:foul?Math.min(last.t,R.end):(R.catchT||last.t);
+    // 打球：バウンド（土/芝）と転がり、フェンス
+    let nb=0,rollAt=-1,lastFence=-9;
+    for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i];if(b.t>endT)break;
+      if(b.y<=0.001&&a.y>0.001){nb++;const n=nb,v=clamp(0.3+0.7*(a.y/sim.dt)/18,0.3,1),dirt=Math.hypot(b.x,b.z)<27.5,x=b.x,d=Math.hypot(b.x,b.z);if(n<=6)add(b.t,()=>AD.playBounce(n,d,dirt,v,pan(x)))}
+      if(rollAt<0&&nb>0&&b.y<=0.001&&a.y<=0.001)rollAt=a.t;
+      if(!hr&&sim.fenceHit){const r=Math.hypot(b.x,b.z),an=Math.atan2(b.x,b.z)/D2R;
+        if(b.z>0&&Math.abs(an)<=45&&r>=fenceAt(an)-0.5&&b.t-lastFence>0.4){const pw=clamp(sim.ev/44,.35,1)*(lastFence<0?1:.45),x=b.x;lastFence=b.t;add(b.t,()=>AD.playFence(pw,pan(x)))}}}
+    if(rollAt>=0&&endT-rollAt>0.2){const dur=Math.min(endT-rollAt,3),g=0.05*clamp(sim.ev/45,.25,1),x=last.x,dirt=Math.hypot(last.x,last.z)<27.5;add(rollAt,()=>AD.playRoll(dur,g,pan(x),dirt))}
+    if(foul&&last.z<-1&&Math.abs(last.x)<22&&last.t<=endT+0.01){const x=last.x;add(last.t,()=>AD.playNet(pan(x)))}// バックネット
+    else if(hr||(foul&&sim.stands)){const x=last.x;if(last.t<=endT+0.01)add(last.t,()=>AD.playSeats(pan(x)))}
+    // 守備：捕球
+    if(R.fi>=0&&!hr&&!foul){const px=R.fieldPt?R.fieldPt[0]:0,pz=R.fieldPt?R.fieldPt[1]:0,dist=Math.hypot(px,pz),pw=clamp(sim.ev/46,.3,1);
+      const air=R.air||R.type==='FOULOUT',kind=air?(R.type==='LO'?'line':'fly'):(sim.launch<7?'ground':'scoop');add(R.catchT,()=>AD.playCatch(kind,pw,pan(px),dist))}
+    // 送球と受球
+    (R.throws||[]).forEach(th=>{const fx=th.from?th.from[0]:0,tx=th.to?th.to[0]:0;
+      if(th.run){add(th.t1,()=>AD.playBase(pan(tx),0.5));return}
+      const spd=(th.d||20)/Math.max(0.2,th.t1-th.t0),pw=clamp((spd-20)/25,0.3,1);
+      add(th.t0,()=>AD.playThrow(pw,pan(fx)));
+      if(th.err){add(th.t1,()=>AD.playBounce(1,th.d,true,0.7,pan(tx)));add(th.t1+0.12,()=>AD.playRoll(Math.min(1.4,th.rollT||1),0.04,pan(tx),true))}
+      else add(th.t1,()=>AD.playCatch('recv',pw,pan(tx),Math.hypot(th.to[0],th.to[1])))});
+    // 走者：塁を踏む音。際どいタイミング・アウトのときはスライディング
+    if(!hr)(R.runners||[]).forEach(r=>{if(r.to===r.from)return;const n=r.to-r.from;
+      for(let k=1;k<=n;k++){const need=k*BL-(r.lead||0);let tau=0;while(tau<20&&accelS(tau,r.v)<need)tau+=0.02;let ta=r.t0+tau;if(r.out&&r.outT)ta=Math.min(ta,r.outT);
+        const bp=BASEP[(r.from+k)%4];
+        if(k<n){add(ta,()=>AD.playBase(pan(bp[0]),0.4));continue}
+        const close=(R.throws||[]).some(th=>!th.run&&th.to&&Math.abs(th.t1-ta)<0.55&&d2(th.to,bp)<2.5);
+        if((r.out||close)&&!(r.from===0&&r.to===1)){const head=r.to!==4&&Math.random()<0.25;add(ta-0.28,()=>AD.playSlide(head,pan(bp[0])))}
+        add(ta,()=>AD.playBase(pan(bp[0]),0.7))}});
+    L.sort((a,b)=>a.t-b.t);return L},
+  step(P,pt){const L=P.snd;if(!L||!this.ok())return;let i=P.sndI||0;
+    while(i<L.length&&L[i].t<=pt){const e=L[i++];if(pt-e.t<0.25)try{e.f()}catch(x){console.warn('sfx',x)}}// スキップで時間が飛んだときは、過ぎた音を鳴らさない
+    P.sndI=i},
+};
+(function(){const AD=AudioDirector,old={};
+  ['playBat','playMitt','playRelease','playFence','playBounce','playSlide','playBase','playGlove','playThrow','playNet'].forEach(k=>old[k]=AD[k]);
+  const wrap=(k,fn)=>{AD[k]=function(){if(SFX.ok()){try{return fn.apply(this,arguments)}catch(e){console.warn('fx',k,e)}}return old[k]?old[k].apply(this,arguments):undefined}};
+  wrap('playBat',(type,ev,pan)=>SFX.bat(type,ev,pan));
+  wrap('playMitt',(kmh,pt,bounce,tx)=>SFX.mitt(kmh,pt,bounce,tx));
+  wrap('playRelease',(kmh,dur,pt)=>SFX.release(kmh,dur,pt));
+  wrap('playFence',(pw,pan)=>SFX.fence(pw,pan));
+  wrap('playBounce',(n,dist,dirt,pw,pan)=>SFX.bounce(n,dist,dirt==null?false:dirt,pw,pan));
+  wrap('playSlide',(head,pan)=>SFX.slide(head,pan));
+  wrap('playBase',(pan,pw)=>SFX.base(pan,pw));
+  wrap('playGlove',outfield=>SFX.catchBall(outfield?'fly':'recv',outfield?.6:.5,0,outfield?80:20));
+  wrap('playThrow',(pw,pan)=>SFX.throwWhip(pw,pan));
+  wrap('playNet',pan=>SFX.net(pan));
+  AD.playSwing=function(mode){try{if(SFX.ok())SFX.swing(mode)}catch(e){}};
+  AD.playCatch=function(kind,pw,pan,dist){try{if(SFX.ok())SFX.catchBall(kind,pw,pan,dist)}catch(e){}};
+  AD.playRoll=function(dur,g,pan,dirt){try{if(SFX.ok())SFX.roll(dur,g,pan,dirt)}catch(e){}};
+  AD.playSeats=function(pan){try{if(SFX.ok())SFX.seats(pan)}catch(e){}};
+  AD.playJingle=function(kind,delay){try{if(SFX.ok())SFX.jingle(kind,delay)}catch(e){}};
+  // 打球音の種類：バントは別の音
+  AD.batType=function(q,ev,mode,jammed,foul){if(mode==='bunt')return foul?'foul':'bunt';if(foul)return'foul';if(jammed)return'jammed';if(q>0.93&&ev>=44)return'perfect';if(q>0.8||ev>=40)return'hard';if(q>0.55)return'normal';return'weak'};
+  // 観客の声：状態が変わったとき（歓声・どよめき・ため息・手拍子）に重ねる
+  const _sc=AD.setCrowd;AD.setCrowd=function(k,ms){const prev=this.crowdState;const r=_sc.apply(this,arguments);try{SFX.crowdHook(k,ms,prev)}catch(e){}return r};
+})();
 
 /* クラウド保存の初期化（ログインしていれば有効／未ログインでもそのまま遊べる） */
 try{initNationalTeams()}catch(e){}
